@@ -1,6 +1,6 @@
 # CurseForge project setup — ready to copy
 
-Project information for the 0.5.0 beta. Publishing was explicitly enabled by the owner on 2026-09-20; successful `main` releases now upload their tested ZIP automatically.
+Project information for the 0.6.0 beta. Publishing was explicitly enabled by the owner on 2026-09-20; successful `main` releases now upload their tested ZIP automatically.
 
 | Field | Value |
 | --- | --- |
@@ -23,12 +23,12 @@ Project information for the 0.5.0 beta. Publishing was explicitly enabled by the
 
 | Field | Value |
 | --- | --- |
-| Existing addon version | **0.5.0** |
-| Display name | **Forever - Save My Config v0.5.0** |
+| Existing addon version | **0.6.0** |
+| Display name | **Forever - Save My Config v0.6.0** |
 | Release type | **Beta** (preview; live-game validation pending) |
-| ZIP asset | `ForeverSaveMyConfig-v0.5.0.zip` from the GitHub release created from `main` |
+| ZIP asset | `ForeverSaveMyConfig-v0.6.0.zip` from the GitHub release created from `main` |
 | Target game version | **1.60.1**, Interface **16001**; select the exact Forever version rather than a different Classic/Retail version. |
-| Changelog | Matching 0.5.0 entry in [changelog.md](changelog.md). |
+| Changelog | Matching 0.6.0 entry in [changelog.md](changelog.md). |
 | CurseForge project ID | **1704390** (supplied by the owner). |
 
 The GitHub Actions secret `CURSE_FORGE` is already present. The repository variable `CURSEFORGE_PROJECT_ID` is set to **1704390**. `CURSEFORGE_PUBLISH_ENABLED=true` enables uploads after the owner explicitly resumed publishing. Do not use Hunter's Friend's project ID.

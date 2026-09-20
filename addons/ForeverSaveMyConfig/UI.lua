@@ -125,7 +125,16 @@ refresh = function()
     panel.details:SetText(p and NS.Summary(p) or L.EMPTY_DETAILS)
     panel.details:ClearFocus()
 end
+function NS.LoadDefaultProfile()
+    selected=NS.DefaultProfileName();page=1
+    if selected then
+        local names={};for name in pairs(NS.db.profiles) do names[#names+1]=name end;table.sort(names)
+        for index,name in ipairs(names) do if name==selected then page=math.ceil(index/9);break end end
+    end
+    return selected
+end
 function NS.OpenUI()
+    if selected~=false and (not selected or not NS.db.profiles[selected]) then NS.LoadDefaultProfile() end
     if panel then panel:Show(); refresh(); return end
     panel = window('ForeverConfigWindow',960,684,nil,'main')
     local iconBorder=CreateFrame('Frame',nil,panel)
@@ -215,7 +224,7 @@ function NS.OpenUI()
         local p = current(); if not p or selected == false then status(L.DELETE_SELECT); return end
         local name = selected
         showDialog(L.DELETE_TITLE,T('DELETE_PROMPT',name),L.DELETE_ACTION,function()
-            NS.db.profiles[name] = nil; selected = nil; return T('DELETE_DONE',name)
+            NS.db.profiles[name]=nil;NS.LoadDefaultProfile();return T('DELETE_DONE',name)
         end)
     end)
     button(panel,L.RELOAD,857,-565,69,function()

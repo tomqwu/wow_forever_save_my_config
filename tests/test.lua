@@ -139,6 +139,17 @@ test('save/import collision preserves old profile and import never applies setti
     equal(NS.db.profiles.Profile,saved); equal(live,before)
     throws(function() NS.Save('Profile',all) end)
 end)
+test('newest profile from the current character becomes the default',function()
+    reset();local originalTime=time
+    time=function() return 100 end;NS.Save('Older local',{cvars=true})
+    time=function() return 300 end;NS.Save('Newest local',{cvars=true})
+    local originalUnitName=UnitName;UnitName=function() return 'SomeoneElse' end
+    time=function() return 900 end;NS.Save('Newer other character',{cvars=true})
+    UnitName=originalUnitName;time=originalTime
+    assert(NS.DefaultProfileName()=='Newest local')
+    NS.db.profiles['Newest local']=nil
+    assert(NS.DefaultProfileName()=='Older local')
+end)
 test('inspect exposes readable saved bindings, macros, addon values, CVars and actions',function()
     reset();local p=NS.Capture('Readable',all);local shown=NS.Inspect(p)
     for _,expected in ipairs({'KEYBINDINGS','"SPACE" = "JUMP"','MACROS','"/petattack"',
@@ -301,12 +312,17 @@ local function click(label)
 end
 test('GUI smoke: save, select, export, import, coverage, review, cancel, recovery',function()
     reset();NS.db.ui.positions.main={point='INVALID',relativePoint='CENTER',x=0,y=0}
-    NS.RefreshMinimap()
+    NS.Save('Default local',{cvars=true})
+    ForeverSaveMyConfigDB=NS.db
+    for _,w in ipairs(objects) do
+        if w.scripts.OnEvent then w.scripts.OnEvent(w,'ADDON_LOADED','ForeverSaveMyConfig');break end
+    end
     local mini=ForeverSaveMyConfigMinimap
     assert(mini and mini.shown and mini.width==30 and mini.height==30)
     local mx,my=mini.point[4],mini.point[5]
     assert(math.abs(math.sqrt(mx*mx+my*my)-104)<0.01)
     mini.scripts.OnMouseDown();mini.scripts.OnClick();assert(ForeverConfigWindow.shown)
+    assert(ForeverConfigWindow.details:GetText():find('Default local',1,true))
     ForeverConfigWindow:Hide();cursorX,cursorY=0,104
     mini.scripts.OnMouseDown();mini.scripts.OnDragStart(mini)
     assert(math.abs(NS.db.ui.minimapAngle-90)<0.01 and mini.scripts.OnUpdate)
@@ -318,7 +334,7 @@ test('GUI smoke: save, select, export, import, coverage, review, cancel, recover
     ForeverConfigWindow:ClearAllPoints();ForeverConfigWindow:SetPoint('TOPLEFT',UIParent,'TOPLEFT',123,-45)
     ForeverConfigWindow.scripts.OnDragStop(ForeverConfigWindow)
     assert(NS.db.ui.positions.main.x==123 and NS.db.ui.positions.main.y==-45)
-    click('Save new'); assert(NS.Count(NS.db.profiles)==1)
+    click('Save new'); assert(NS.Count(NS.db.profiles)==2)
     click('Export'); assert(ForeverConfigDialog.shown);click('Close')
     click('Addon coverage');click('Close')
     click('Review restore'); assert(ForeverConfigDialog.shown);click('Apply selected');assert(NS.db.recovery)

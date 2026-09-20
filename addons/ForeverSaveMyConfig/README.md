@@ -2,7 +2,7 @@
 
 A standalone profile manager for **WoW Forever 1.60.x** (Interface **16001**), built using the compatibility and delivery workflow from [Forever - Hunter's Friend](https://github.com/tomqwu/wow_forever_hunters_friend).
 
-Open **`/fconfig`** or **`/fsmc`** to save named profiles, inspect their contents, restore selected sections, and copy/paste exports. Version **0.5.0** is an initial preview: tested with mocked client APIs and synthetic Windows backup data, not yet validated inside a running game. Click the draggable minimap icon to open the GUI. Profile details and dialogs use selectable text fields; **Inspect** shows readable bindings, macros, addon variables, game settings, action slots, and capture notes. The branded profile window and import/export dialog are movable and remember their positions; **Reset layout** returns the windows and minimap icon to their defaults. Section choices are remembered between sessions. The GUI detects the WoW locale and includes English, Simplified Chinese, and Traditional Chinese; unsupported locales fall back to complete English text.
+Open **`/fconfig`** or **`/fsmc`** to save named profiles, inspect their contents, restore selected sections, and copy/paste exports. Version **0.6.0** is an initial preview: tested with mocked client APIs and synthetic Windows backup data, not yet validated inside a running game. Click the draggable minimap icon to open the GUI. Profile details and dialogs use selectable text fields; **Inspect** shows readable bindings, macros, addon variables, game settings, action slots, and capture notes. The branded profile window and import/export dialog are movable and remember their positions; **Reset layout** returns the windows and minimap icon to their defaults. Section choices are remembered between sessions. The GUI detects the WoW locale and includes English, Simplified Chinese, and Traditional Chinese; unsupported locales fall back to complete English text.
 
 ## What it saves
 
@@ -24,6 +24,8 @@ The bundled registry includes Auctionator, Baganator, Hunter's Friend, Leatrix M
 4. Click **Export**, **Select all**, then Ctrl+C. Store the entire `FSMC1:...` text in a file outside WoW. The window shows the export's Adler-32 checksum. Click **Reload** to flush the saved profile database to disk.
 5. On the destination, click **Import**, paste, and **Import as new**. The checksum is verified before a profile is created; importing does not apply settings. Inspect **Macros** and the source character, choose sections, then **Review restore → Apply selected**.
 6. Read **Last restore report**. Reload immediately after restoring addon data, then check your settings in game.
+
+After each login or `/reload`, the GUI automatically selects the newest saved profile whose source character and realm match the current character. It never applies that profile silently; restoration still requires **Review restore → Apply selected**.
 
 There are up to 20 named profiles and one automatically replaced **Recovery snapshot**. A recovery snapshot is required before restoration. Binding errors trigger a rollback; other errors stop remaining sections and leave a report. Earlier sections may already have changed. Recovery is another selectable profile; it restores captured values, but macro merge does not delete macros newly created by an earlier restore. Export a recovery snapshot if you need to retain it beyond the next restore.
 

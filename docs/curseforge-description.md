@@ -16,7 +16,7 @@ Click the draggable minimap icon or open **`/fconfig`** or **`/fsmc`** to get st
 
 ## Save, share, and restore
 
-Create up to **20 named profiles**, inspect selectable readable details for every saved section, and choose which sections to restore. **Export** produces checksummed text you can keep in a file; **Import** verifies the Adler-32 checksum and adds a profile without applying it. The checksum detects damaged copy/paste text and is not an authenticity signature. A **recovery snapshot** is created before each restore, and a report identifies skipped settings or errors.
+Create up to **20 named profiles**, inspect selectable readable details for every saved section, and choose which sections to restore. After login or `/reload`, the newest profile saved by the current character is selected automatically without silently applying it. **Export** produces checksummed text you can keep in a file; **Import** verifies the Adler-32 checksum and adds a profile without applying it. The checksum detects damaged copy/paste text and is not an authenticity signature. A **recovery snapshot** is created before each restore, and a report identifies skipped settings or errors.
 
 The included addon registry covers **Auctionator, Baganator, Forever - Hunter's Friend, Leatrix Maps, Leatrix Plus, SilverDragon, and Syndicator**. A Windows registry scanner lets you add other installed addons' saved-variable declarations. Hunter's Friend is not required.
 

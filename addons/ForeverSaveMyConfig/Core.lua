@@ -11,6 +11,7 @@ events:SetScript('OnEvent', function(_, event, name)
         if ForeverSaveMyConfigDB == nil then ForeverSaveMyConfigDB = {} end
         local ok, err = pcall(NS.Initialize, ForeverSaveMyConfigDB)
         if not ok then NS.Say(err); return end
+        NS.LoadDefaultProfile()
         NS.RefreshMinimap()
         NS.Say(T('LOADED',NS.Version))
     elseif event == 'PLAYER_LOGOUT' and NS.pendingAddons then

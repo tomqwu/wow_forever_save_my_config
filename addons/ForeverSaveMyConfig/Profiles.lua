@@ -1,6 +1,6 @@
 local _, NS = ...
 local C, P = NS.Codec, NS.Providers
-NS.Version = '0.5.0'
+NS.Version = '0.6.0'
 NS.Sections = {'bindings', 'macros', 'addons', 'cvars', 'actions'}
 local L,T=NS.L,NS.Text
 NS.Labels = {bindings=L.SECTION_BINDINGS,macros=L.SECTION_MACROS,addons=L.SECTION_ADDONS,
@@ -135,6 +135,21 @@ function NS.Import(text, name)
     return p,checksum
 end
 function NS.Export(profile) NS.Validate(profile); return C.Export(profile) end
+function NS.CurrentCharacter()
+    return (UnitName('player') or '?')..' - '..(GetRealmName() or '?')
+end
+function NS.DefaultProfileName()
+    if not NS.db or type(NS.db.profiles)~='table' then return nil end
+    local character,bestName,bestCreated=NS.CurrentCharacter(),nil,-1
+    for name,profile in pairs(NS.db.profiles) do
+        if type(profile)=='table' and type(profile.source)=='table'
+            and profile.source.character==character and type(profile.created)=='number'
+            and (profile.created>bestCreated or (profile.created==bestCreated and (not bestName or name>bestName))) then
+            bestName,bestCreated=name,profile.created
+        end
+    end
+    return bestName
+end
 function NS.Summary(p)
     local rows = {p.name,T('SUMMARY_FROM',p.source.character,p.source.class),T('SUMMARY_CLIENT',p.source.build),
         T('SUMMARY_SAVED',date('%Y-%m-%d %H:%M',p.created)),''}

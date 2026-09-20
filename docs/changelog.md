@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- Load the current character's default profile during addon initialization.
+- Define the default as the newest named profile saved from the exact character and realm, ignoring newer profiles from other characters.
+- Open the GUI with that profile selected and focused on its list page after every login or `/reload`; applying settings still requires explicit review and confirmation.
+
 ## 0.5.0
 
 - Add locale detection with a complete English fallback.
