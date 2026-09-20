@@ -1,0 +1,47 @@
+name: Check and release
+on:
+  push:
+    branches: [main]
+    tags: ['ForeverSaveMyConfig-v*']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y lua5.1
+      - run: python3 scripts/check.py
+      - run: git diff --check
+      - run: python3 scripts/package.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ForeverSaveMyConfig
+          path: dist/*.zip
+  windows-tools:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test offline tools with synthetic data
+        shell: powershell
+        run: ./tests/test_powershell.ps1
+  release:
+    if: startsWith(github.ref, 'refs/tags/ForeverSaveMyConfig-v')
+    needs: [check, windows-tools]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ForeverSaveMyConfig
+          path: dist
+      - name: Verify version and publish a new release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 scripts/release_notes.py "$RELEASE_TAG" > /tmp/release-notes.md
+          gh release create "$RELEASE_TAG" dist/*.zip --verify-tag --prerelease --title "Forever - Save My Config ${RELEASE_TAG#ForeverSaveMyConfig-}" --notes-file /tmp/release-notes.md
