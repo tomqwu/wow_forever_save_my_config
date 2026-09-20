@@ -10,7 +10,8 @@ events:SetScript('OnEvent', function(_, event, name)
         if ForeverSaveMyConfigDB == nil then ForeverSaveMyConfigDB = {} end
         local ok, err = pcall(NS.Initialize, ForeverSaveMyConfigDB)
         if not ok then NS.Say(err); return end
-        NS.Say('Loaded v'..NS.Version..'. /fconfig opens your profiles.')
+        NS.RefreshMinimap()
+        NS.Say('Loaded v'..NS.Version..'. Click the minimap icon or use /fconfig.')
     elseif event == 'PLAYER_LOGOUT' and NS.pendingAddons then
         -- Reapply immediately before serialization: some addons mutate caches after a restore.
         -- Addons with later logout writers may still need an adapter or offline WTF restore.

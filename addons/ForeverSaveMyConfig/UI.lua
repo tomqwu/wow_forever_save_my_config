@@ -142,7 +142,8 @@ function NS.OpenUI()
         NS.db.ui.positions={}
         restorePosition(panel)
         if dialog then restorePosition(dialog) end
-        status('Window positions reset.')
+        if NS.ResetMinimapPosition then NS.ResetMinimapPosition() end
+        status('Window and minimap positions reset.')
     end)
     button(panel,'Close',858,-24,80,function() panel:Hide() end)
     text(panel,'SAVED PROFILES',22,-108,'GameFontNormalSmall')
@@ -227,4 +228,80 @@ function NS.OpenUI()
     panel.status = text(panel,'Ready. Profiles are written to disk on /reload or normal logout.',22,-618,'GameFontHighlightSmall')
     panel.status:SetWidth(912); panel.status:SetHeight(42); panel.status:SetJustifyV('TOP')
     refresh()
+end
+
+local minimapButton, positionMinimap
+function NS.RefreshMinimap()
+    if not Minimap or not NS.db then return end
+    if not minimapButton then
+        minimapButton=CreateFrame('Button','ForeverSaveMyConfigMinimap',Minimap)
+        minimapButton:SetSize(30,30)
+        minimapButton:SetFrameStrata('MEDIUM');minimapButton:SetFrameLevel(8)
+        local function position()
+            local width,height=Minimap:GetWidth(),Minimap:GetHeight()
+            if not finite(width) or width<=0 then width=140 end
+            if not finite(height) or height<=0 then height=140 end
+            local angle=math.rad(NS.db.ui.minimapAngle or 220)
+            minimapButton:ClearAllPoints()
+            minimapButton:SetPoint('CENTER',Minimap,'CENTER',
+                math.cos(angle)*(width/2+4),math.sin(angle)*(height/2+4))
+        end
+        positionMinimap=position
+        position();Minimap:HookScript('OnSizeChanged',position)
+        minimapButton:RegisterForDrag('LeftButton')
+        local dragged=false
+        local function followCursor()
+            local x,y=GetCursorPosition()
+            local cx,cy=Minimap:GetCenter()
+            local scale=Minimap:GetEffectiveScale()
+            if not finite(x) or not finite(y) or not finite(cx) or not finite(cy)
+                or not finite(scale) or scale<=0 then return end
+            local dx,dy=x/scale-cx,y/scale-cy
+            if dx==0 and dy==0 then return end
+            NS.db.ui.minimapAngle=math.deg(math.atan2(dy,dx))%360
+            position()
+        end
+        minimapButton:SetScript('OnMouseDown',function() dragged=false end)
+        minimapButton:SetScript('OnDragStart',function(self)
+            dragged=true
+            if GameTooltip then GameTooltip:Hide() end
+            self:SetScript('OnUpdate',followCursor);followCursor()
+        end)
+        minimapButton:SetScript('OnDragStop',function(self) self:SetScript('OnUpdate',nil) end)
+        minimapButton:SetScript('OnHide',function(self) self:SetScript('OnUpdate',nil) end)
+        minimapButton:SetScript('OnClick',function()
+            if dragged then return end
+            if panel and panel:IsShown() then panel:Hide() else NS.OpenUI() end
+        end)
+        local function circle(size,layer)
+            local texture=minimapButton:CreateTexture(nil,layer)
+            texture:SetSize(size,size);texture:SetPoint('CENTER')
+            local mask=minimapButton:CreateMaskTexture()
+            mask:SetTexture('Interface\\CHARACTERFRAME\\TempPortraitAlphaMask',
+                'CLAMPTOBLACKADDITIVE','CLAMPTOBLACKADDITIVE')
+            mask:SetSize(size,size);mask:SetPoint('CENTER');texture:AddMaskTexture(mask)
+            return texture
+        end
+        circle(30,'BACKGROUND'):SetColorTexture(0.06,0.08,0.10,1)
+        circle(28,'BORDER'):SetColorTexture(0.72,0.57,0.25,1)
+        circle(24,'ARTWORK'):SetColorTexture(0.02,0.04,0.05,1)
+        local icon=circle(21,'OVERLAY')
+        icon:SetTexture(iconPath);icon:SetTexCoord(0.04,0.96,0.04,0.96)
+        circle(26,'HIGHLIGHT'):SetColorTexture(0.45,1,0.85,0.24)
+        minimapButton:SetScript('OnEnter',function(self)
+            if GameTooltip then
+                GameTooltip:SetOwner(self,'ANCHOR_LEFT')
+                GameTooltip:SetText('Forever - Save My Config')
+                GameTooltip:AddLine('Click: open profiles  |  Drag: move',1,1,1)
+                GameTooltip:Show()
+            end
+        end)
+        minimapButton:SetScript('OnLeave',function() if GameTooltip then GameTooltip:Hide() end end)
+    end
+    positionMinimap();minimapButton:Show()
+end
+function NS.ResetMinimapPosition()
+    if not NS.db then return end
+    NS.db.ui.minimapAngle=220
+    if positionMinimap then positionMinimap() end
 end

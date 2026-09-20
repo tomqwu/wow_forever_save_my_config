@@ -2,7 +2,7 @@
 
 A standalone profile manager for **WoW Forever 1.60.x** (Interface **16001**), built using the compatibility and delivery workflow from [Forever - Hunter's Friend](https://github.com/tomqwu/wow_forever_hunters_friend).
 
-Open **`/fconfig`** or **`/fsmc`** to save named profiles, inspect their contents, restore selected sections, and copy/paste exports. Version **0.2.1** is an initial preview: tested with mocked client APIs and synthetic Windows backup data, not yet validated inside a running game. The branded profile window and import/export dialog are movable and remember their positions; **Reset layout** returns both to the center. Section choices are remembered between sessions.
+Open **`/fconfig`** or **`/fsmc`** to save named profiles, inspect their contents, restore selected sections, and copy/paste exports. Version **0.3.0** is an initial preview: tested with mocked client APIs and synthetic Windows backup data, not yet validated inside a running game. Click the draggable minimap icon to open the GUI. The branded profile window and import/export dialog are movable and remember their positions; **Reset layout** returns the windows and minimap icon to their defaults. Section choices are remembered between sessions.
 
 ## What it saves
 
@@ -19,7 +19,7 @@ The bundled registry includes Auctionator, Baganator, Hunter's Friend, Leatrix M
 ## First use
 
 1. Install `ForeverSaveMyConfig/` in your client's `Interface/AddOns/` folder. **Restart WoW once for first addon discovery.** Existing installations need only `/reload`.
-2. Open `/fconfig`, select sections, enter a name, and click **Save new**. Save while out of combat. Both binding sets are read; the original active bindings, including unsaved edits, are preserved.
+2. Click the minimap icon or open `/fconfig`, select sections, enter a name, and click **Save new**. Save while out of combat. Both binding sets are read; the original active bindings, including unsaved edits, are preserved.
 3. Check the profile details and **Addon coverage**. Unloaded, unregistered, and unserializable data is explicitly reported.
 4. Click **Export**, **Select all**, then Ctrl+C. Store the entire `FSMC1:...` text in a file outside WoW. The window shows the export's Adler-32 checksum. Click **Reload** to flush the saved profile database to disk.
 5. On the destination, click **Import**, paste, and **Import as new**. The checksum is verified before a profile is created; importing does not apply settings. Inspect **Macros** and the source character, choose sections, then **Review restore → Apply selected**.

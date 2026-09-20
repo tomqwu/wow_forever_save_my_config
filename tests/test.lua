@@ -204,16 +204,17 @@ test('profile limit, names and future database version reject safely',function()
     throws(function() NS.Initialize({profiles='broken'}) end)
 end)
 test('UI preferences migrate safely and preserve explicit section choices',function()
-    local db={ui={sections={bindings=false},positions='broken'}}
+    local db={ui={sections={bindings=false},positions='broken',minimapAngle=725}}
     NS.Initialize(db)
     assert(db.ui.sections.bindings==false and db.ui.sections.macros==true)
-    assert(type(db.ui.positions)=='table')
+    assert(type(db.ui.positions)=='table' and db.ui.minimapAngle==5)
+    db.ui.minimapAngle='broken';NS.Initialize(db);assert(db.ui.minimapAngle==220)
 end)
 -- Exercise frame construction, callbacks, slash commands and logout without a real renderer.
 local objects={}
 local methods={}
 local noop=function() end
-for name in ('SetFontObject SetAutoFocus SetMultiLine SetTextInsets SetMaxLetters SetJustifyH SetWidth SetHeight SetJustifyV ClearFocus SetFocus HighlightText SetFrameStrata SetClampedToScreen EnableMouse SetMovable RegisterForDrag StopMovingOrSizing StartMoving SetColorTexture SetAllPoints SetScale SetScrollChild SetVerticalScroll SetFrameLevel RegisterEvent UpdateScrollChildRect SetTexCoord'):gmatch('%S+') do methods[name]=noop end
+for name in ('SetFontObject SetAutoFocus SetMultiLine SetTextInsets SetMaxLetters SetJustifyH SetWidth SetHeight SetJustifyV ClearFocus SetFocus HighlightText SetFrameStrata SetClampedToScreen EnableMouse SetMovable RegisterForDrag StopMovingOrSizing StartMoving SetColorTexture SetAllPoints SetScale SetScrollChild SetVerticalScroll SetFrameLevel RegisterEvent UpdateScrollChildRect SetTexCoord AddMaskTexture'):gmatch('%S+') do methods[name]=noop end
 local function widget(kind)
     local w=setmetatable({kind=kind,scripts={},shown=true,width=960,height=684,content=''}, {__index=methods})
     objects[#objects+1]=w; return w
@@ -241,15 +242,24 @@ function methods:GetFont() return 'font',12 end
 function methods:GetSpacing() return 0 end
 function methods:GetVerticalScroll() return 0 end
 function methods:GetFrameLevel() return 1 end
+function methods:GetCenter() return self.centerX or 0,self.centerY or 0 end
+function methods:GetEffectiveScale() return self.effectiveScale or 1 end
 function methods:SetChecked(v) self.checked=v end
 function methods:GetChecked() return self.checked end
 function methods:SetShown(v) self.shown=v end
+function methods:IsShown() return self.shown end
 function methods:Show() self.shown=true end
 function methods:Hide() self.shown=false end
 function methods:CreateFontString() return widget('FontString') end
 function methods:CreateTexture() return widget('Texture') end
+function methods:CreateMaskTexture() return widget('Mask') end
+function methods:HookScript(name,fn) self.hooks=self.hooks or {};self.hooks[name]=fn end
 CreateFrame=function(kind,name) local w=widget(kind);w.name=name;if name then _G[name]=w end; return w end
-UIParent=widget('Root'); UISpecialFrames={}; SlashCmdList={}; DEFAULT_CHAT_FRAME={AddMessage=noop}
+UIParent=widget('Root');Minimap=widget('Root');Minimap:SetSize(200,200)
+UISpecialFrames={};SlashCmdList={};DEFAULT_CHAT_FRAME={AddMessage=noop}
+GameTooltip={Hide=noop,SetOwner=noop,SetText=noop,AddLine=noop,Show=noop}
+local cursorX,cursorY=0,0
+GetCursorPosition=function() return cursorX,cursorY end
 ReloadUI=noop
 load('UI');load('Core')
 local function click(label)
@@ -257,7 +267,18 @@ local function click(label)
     error('Missing button '..label)
 end
 test('GUI smoke: save, select, export, import, coverage, review, cancel, recovery',function()
-    reset();NS.db.ui.positions.main={point='INVALID',relativePoint='CENTER',x=0,y=0};NS.OpenUI()
+    reset();NS.db.ui.positions.main={point='INVALID',relativePoint='CENTER',x=0,y=0}
+    NS.RefreshMinimap()
+    local mini=ForeverSaveMyConfigMinimap
+    assert(mini and mini.shown and mini.width==30 and mini.height==30)
+    local mx,my=mini.point[4],mini.point[5]
+    assert(math.abs(math.sqrt(mx*mx+my*my)-104)<0.01)
+    mini.scripts.OnMouseDown();mini.scripts.OnClick();assert(ForeverConfigWindow.shown)
+    ForeverConfigWindow:Hide();cursorX,cursorY=0,104
+    mini.scripts.OnMouseDown();mini.scripts.OnDragStart(mini)
+    assert(math.abs(NS.db.ui.minimapAngle-90)<0.01 and mini.scripts.OnUpdate)
+    mini.scripts.OnDragStop(mini);mini.scripts.OnClick();assert(not ForeverConfigWindow.shown)
+    mini.scripts.OnMouseDown();mini.scripts.OnClick();assert(ForeverConfigWindow.shown)
     local iconFound=false
     for _,w in ipairs(objects) do if w.texture and w.texture:find('SaveMyConfig',1,true) then iconFound=true end end
     assert(iconFound and NS.db.ui.sections.bindings and NS.db.ui.positions.main==nil)
@@ -281,7 +302,7 @@ test('GUI smoke: save, select, export, import, coverage, review, cancel, recover
     assert(NS.db.ui.sections.bindings==false)
     click('None');for _,key in ipairs(NS.Sections) do assert(NS.db.ui.sections[key]==false) end
     click('All');for _,key in ipairs(NS.Sections) do assert(NS.db.ui.sections[key]==true) end
-    click('Reset layout');assert(not next(NS.db.ui.positions))
+    click('Reset layout');assert(not next(NS.db.ui.positions) and NS.db.ui.minimapAngle==220)
 end)
 test('logout reapplies only staged addon values and does not modify profiles',function()
     assert(NS.pendingAddons); ExampleDB.nested.scale=42

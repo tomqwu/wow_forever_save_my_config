@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- Add a visible minimap icon that opens and closes the profile GUI.
+- Let players drag the icon around the minimap and remember its position.
+- Include the minimap icon in **Reset layout** and document GUI access.
+
 ## 0.2.1
 
 - Enable automatic CurseForge beta publication for project 1704390 after each successful `main` release.
