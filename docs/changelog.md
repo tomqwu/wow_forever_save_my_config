@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- Validate selected profile data before restoration and identify unloaded addons or no-longer-registered variables before changing settings.
+- Verify processed bindings, macros, addon values, CVars, and action slots against live values immediately after restoration.
+- Print the bounded validation report line by line in WoW chat and retain it in **Last restore report**.
+
 ## 0.6.0
 
 - Load the current character's default profile during addon initialization.

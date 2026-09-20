@@ -100,7 +100,7 @@ local function showDialog(title, content, actionLabel, action, hint)
             if ok then
                 dialog:Hide(); refresh()
                 if result then status(result) end
-            else dialog.error:SetText('|cffff8888'..tostring(result)..'|r') end
+            else dialog.error:SetText('|cffff8888'..tostring(result)..'|r');NS.Say(result) end
         end)
         button(dialog,L.SELECT_ALL,204,-510,120,function() dialog.box:SetFocus(); dialog.box:HighlightText() end)
         button(dialog,L.CLOSE,684,-510,110,function() dialog:Hide() end)

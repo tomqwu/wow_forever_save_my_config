@@ -3,6 +3,10 @@ local L,T=NS.L,NS.Text
 function NS.Say(text)
     if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage('|cff6ee7c0'..L.ADDON_NAME..':|r '..tostring(text)) end
 end
+function NS.ChatRestoreReport(report)
+    NS.Say(L.CHAT_REPORT_HEADER)
+    for line in (tostring(report)..'\n'):gmatch('(.-)\n') do if line~='' then NS.Say(line) end end
+end
 local events = CreateFrame('Frame')
 events:RegisterEvent('ADDON_LOADED')
 events:RegisterEvent('PLAYER_LOGOUT')

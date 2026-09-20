@@ -2,6 +2,14 @@ local _, NS = ...
 local C = NS.Codec
 local L,T=NS.L,NS.Text
 local P = {}; NS.Providers = P
+local function same(a,b)
+    local oka,pa=pcall(C.Pack,a);local okb,pb=pcall(C.Pack,b)
+    return oka and okb and pa==pb
+end
+local function issue(audit,message)
+    audit.count=audit.count+1
+    if #audit.lines<50 then audit.lines[#audit.lines+1]=message end
+end
 NS.CVars = {
     'autoLootDefault', 'autoSelfCast', 'autoDismountFlying', 'autoClearAFK',
     'cameraDistanceMaxZoomFactor', 'cameraSmoothStyle', 'cameraYawMoveSpeed',
@@ -80,6 +88,15 @@ function P.bindings.restore(data)
     assert(api('LoadBindings')(data.active) ~= false, 'Cannot activate binding set.')
     assert(api('SaveBindings')(data.active) ~= false, 'Cannot persist active binding set.')
 end
+function P.bindings.verify(data,audit)
+    local current=P.bindings.capture()
+    for set=1,2 do
+        if not same(current.sets[set],data.sets[set]) then
+            issue(audit,T('VERIFY_BINDINGS',set==1 and L.ACCOUNT or L.CHARACTER))
+        end
+    end
+    if current.active~=data.active then issue(audit,L.VERIFY_ACTIVE_BINDINGS) end
+end
 P.macros = {}
 function P.macros.capture()
     local account, character = NS.MacroLimits()
@@ -131,6 +148,15 @@ function P.macros.restore(data, report)
         end
     end
 end
+function P.macros.verify(data,audit)
+    for _,macro in ipairs(data) do
+        local index,exact=findMacro(macro)
+        local _,icon=GetMacroInfo(index or 0)
+        if not exact or icon~=macro.icon then
+            issue(audit,T('VERIFY_MACRO',macro.character and L.CHARACTER or L.ACCOUNT,macro.name))
+        end
+    end
+end
 P.cvars = {}
 function P.cvars.capture(_, report)
     local data, get = {}, C_CVar and C_CVar.GetCVar or GetCVar
@@ -151,6 +177,15 @@ function P.cvars.restore(data, report)
         local ok, err = false, 'Unavailable on this client'
         if exists and current ~= nil then ok, err = pcall(set, key, value) end
         if not ok or err == false then report[#report+1] = 'Skipped setting '..key..': '..tostring(err) end
+    end
+end
+function P.cvars.verify(data,audit)
+    local get=C_CVar and C_CVar.GetCVar or GetCVar
+    for key,expected in pairs(data) do
+        local ok,actual=pcall(get,key)
+        if not ok or actual==nil or tostring(actual)~=tostring(expected) then
+            issue(audit,T('VERIFY_CVAR',key,tostring(expected),ok and tostring(actual) or '<unavailable>'))
+        end
     end
 end
 P.addons = {}
@@ -218,6 +253,20 @@ function P.addons.restore(data, report)
     end
     return applied
 end
+function P.addons.verify(data,audit)
+    for addon,entry in pairs(data) do
+        if not NS.Loaded(addon) then issue(audit,T('VERIFY_ADDON_UNLOADED',addon))
+        else
+            for name,saved in pairs(entry.variables) do
+                if NS.Registry[addon] and NS.Registry[addon][name]==saved.scope then
+                    local matches=(not saved.present and _G[name]==nil) or
+                        (saved.present and _G[name]~=nil and same(_G[name],saved.value))
+                    if not matches then issue(audit,T('VERIFY_ADDON_VALUE',addon,name)) end
+                else issue(audit,T('VERIFY_ADDON_UNREGISTERED',addon,name)) end
+            end
+        end
+    end
+end
 P.actions = {}
 function P.actions.capture(_, report)
     local data = {}
@@ -259,5 +308,16 @@ function P.actions.restore(data, report)
             if ClearCursor then ClearCursor() end
             report[#report+1] = 'Action slot '..slot..': '..tostring(err)
         end
+    end
+end
+function P.actions.verify(data,audit)
+    for slot,action in pairs(data) do
+        local kind,id=GetActionInfo(slot);local matches=false
+        if action.kind=='empty' then matches=kind==nil
+        elseif action.kind=='macro' then
+            local expected,exact=findMacro(action.macro)
+            matches=exact and kind=='macro' and id==expected
+        else matches=kind==action.kind and id==action.id end
+        if not matches then issue(audit,T('VERIFY_ACTION',slot)) end
     end
 end

@@ -67,6 +67,7 @@ load('Providers'); load('Profiles')
 local all = {bindings=true,macros=true,addons=true,cvars=true,actions=true}
 local function reset()
     combat=false; active=1; loaded=1
+    loadedAddons={Example=true}
     sets = {{SPACE='JUMP',A='JUMP',B='JUMP',W='MOVEFORWARD',F='SPELL Aimed Shot',G='CLICK TestButton:LeftButton'},{X='JUMP'}}
     live=copy(sets[1]); failBinding=nil
     macros = {[1]={name='Pet',icon=1,body='/petattack'},[121]={name='Local',icon=2,body='/say hi'}}
@@ -173,8 +174,28 @@ test('restore creates independent recovery, replaces bindings, keeps active set'
     live.K='JUMP'; SaveBindings(1); sets[2]={Y='MOVEFORWARD'}
     NS.Restore(p,{bindings=true})
     equal(sets,p.data.bindings.sets); assert(active==p.data.bindings.active)
-    assert(NS.db.recovery.data.bindings.sets[1].K=='JUMP')
+    assert(NS.db.recovery.data.bindings.sets[1].K=='JUMP' and NS.db.lastReport:find('Post-load validation passed',1,true))
     live.SPACE=nil; assert(NS.db.recovery.data.bindings.sets[1].SPACE=='JUMP')
+end)
+test('restore reports unloaded addons before and after processing',function()
+    reset();local p=NS.Capture('Test',all);loadedAddons.Example=false
+    local report=NS.Restore(p,{addons=true})
+    assert(report:find('Pre-load: Example is not loaded',1,true))
+    assert(report:find('Addon Example is not loaded; its saved variables were not verified.',1,true))
+    assert(report:find('Post-load validation found 1 item',1,true))
+end)
+test('restore reports saved addon variables no longer registered locally',function()
+    reset();local p=NS.Capture('Test',all);NS.Registry.Example.ExampleDB=nil
+    local report=NS.Restore(p,{addons=true})
+    assert(report:find('Pre-load: Example / ExampleDB is no longer registered',1,true))
+    assert(report:find('Example / ExampleDB was skipped because it is no longer registered',1,true))
+end)
+test('post-load validation detects a setting the client did not apply',function()
+    reset();local p=NS.Capture('Test',{cvars=true});cvars.autoLootDefault='0'
+    local original=SetCVar
+    SetCVar=function(key,value) if key=='autoLootDefault' then return true end return original(key,value) end
+    local report=NS.Restore(p,{cvars=true});SetCVar=original
+    assert(report:find('Game setting autoLootDefault expected 1 but is 0.',1,true))
 end)
 test('binding API failure rolls back both sets and stops subsequent sections',function()
     reset(); local p=NS.Capture('Test',all); live.K='JUMP'; live.W='JUMP'; SaveBindings(1)
@@ -300,7 +321,8 @@ function methods:CreateMaskTexture() return widget('Mask') end
 function methods:HookScript(name,fn) self.hooks=self.hooks or {};self.hooks[name]=fn end
 CreateFrame=function(kind,name) local w=widget(kind);w.name=name;if name then _G[name]=w end; return w end
 UIParent=widget('Root');Minimap=widget('Root');Minimap:SetSize(200,200)
-UISpecialFrames={};SlashCmdList={};DEFAULT_CHAT_FRAME={AddMessage=noop}
+UISpecialFrames={};SlashCmdList={};local chatMessages={}
+DEFAULT_CHAT_FRAME={AddMessage=function(_,message) chatMessages[#chatMessages+1]=message end}
 GameTooltip={Hide=noop,SetOwner=noop,SetText=noop,AddLine=noop,Show=noop}
 local cursorX,cursorY=0,0
 GetCursorPosition=function() return cursorX,cursorY end
@@ -338,6 +360,8 @@ test('GUI smoke: save, select, export, import, coverage, review, cancel, recover
     click('Export'); assert(ForeverConfigDialog.shown);click('Close')
     click('Addon coverage');click('Close')
     click('Review restore'); assert(ForeverConfigDialog.shown);click('Apply selected');assert(NS.db.recovery)
+    local chat=table.concat(chatMessages,'\n')
+    assert(chat:find('Restore validation report:',1,true) and chat:find('Post-load validation passed',1,true))
     click('Last restore report');click('Close'); click('Recovery snapshot')
     click('Inspect');assert(ForeverConfigDialog.content=='')
     assert(ForeverConfigDialog.shown and ForeverConfigDialog.title.content=='Inspect saved data')

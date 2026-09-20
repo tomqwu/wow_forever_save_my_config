@@ -6,7 +6,7 @@
 ## Notes-zhCN: 保存、恢复、导入和导出按键、宏、插件数据、动作条和游戏设置。
 ## Notes-zhTW: 儲存、復原、匯入和匯出按鍵、巨集、插件資料、動作列和遊戲設定。
 ## Author: tomqwu
-## Version: 0.6.0
+## Version: 0.7.0
 ## IconTexture: Interface\AddOns\ForeverSaveMyConfig\Textures\SaveMyConfig
 ## SavedVariables: ForeverSaveMyConfigDB
 Locales.lua

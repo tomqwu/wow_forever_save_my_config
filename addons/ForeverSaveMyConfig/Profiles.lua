@@ -1,6 +1,6 @@
 local _, NS = ...
 local C, P = NS.Codec, NS.Providers
-NS.Version = '0.6.0'
+NS.Version = '0.7.0'
 NS.Sections = {'bindings', 'macros', 'addons', 'cvars', 'actions'}
 local L,T=NS.L,NS.Text
 NS.Labels = {bindings=L.SECTION_BINDINGS,macros=L.SECTION_MACROS,addons=L.SECTION_ADDONS,
@@ -263,6 +263,26 @@ function NS.Restore(profile, sections)
     assert(next(selected), 'Select at least one section present in this profile.')
     if selected.actions then assert(GetCursorInfo and not GetCursorInfo(), 'Clear your cursor first.') end
     assert(not NS.pendingAddons, 'Reload to finish the previous addon restore before restoring again.')
+    local report,preCount,preLines={},0,0
+    if selected.addons then
+        for _,addon in ipairs(inspectKeys(profile.data.addons)) do
+            local entry=profile.data.addons[addon]
+            if not NS.Loaded(addon) then
+                preCount=preCount+1
+                if preLines<50 then report[#report+1]=T('PRECHECK_ADDON',addon,count(entry.variables));preLines=preLines+1 end
+            else
+                for _,name in ipairs(inspectKeys(entry.variables)) do
+                    local saved=entry.variables[name]
+                    if not NS.Registry[addon] or NS.Registry[addon][name]~=saved.scope then
+                        preCount=preCount+1
+                        if preLines<50 then report[#report+1]=T('PRECHECK_VARIABLE',addon,name);preLines=preLines+1 end
+                    end
+                end
+            end
+        end
+    end
+    if preCount==0 then report[#report+1]=L.PRECHECK_OK
+    elseif preCount>preLines then report[#report+1]=T('PRECHECK_MORE',preCount-preLines) end
     local backup = NS.Capture('Before restore', selected)
     -- Never overwrite addon data unless its current value was safely captured.
     if selected.addons then
@@ -277,13 +297,15 @@ function NS.Restore(profile, sections)
         end
     end
     NS.db.recovery = backup
-    local report = {'Recovery snapshot saved. Macros merge; new macros are not removed by recovery.'}
+    report[#report+1]='Recovery snapshot saved. Macros merge; new macros are not removed by recovery.'
     -- Macro IDs may reorder after edits: restore bars after macros, resolve by identity.
     local order = {'macros','bindings','cvars','actions','addons'}
+    local processed={}
     for _,key in ipairs(order) do
         if selected[key] then
             local ok, result = pcall(P[key].restore, profile.data[key], report)
             if ok then
+                processed[key]=true
                 if key == 'addons' then NS.pendingAddons = result; report[#report+1] = 'Addon data applied. Reload now to let addons initialize from it.' end
                 report[#report+1] = 'Processed '..NS.Labels[key]
             else
@@ -297,6 +319,23 @@ function NS.Restore(profile, sections)
             end
         end
     end
+    local audit={count=0,lines={}}
+    for _,key in ipairs(order) do
+        if processed[key] and P[key].verify then
+            local ok,err=pcall(P[key].verify,profile.data[key],audit)
+            if not ok then
+                audit.count=audit.count+1
+                if #audit.lines<50 then audit.lines[#audit.lines+1]=T('VERIFY_ERROR',NS.Labels[key],tostring(err)) end
+            end
+        end
+    end
+    if audit.count==0 then report[#report+1]=L.POSTCHECK_OK
+    else
+        report[#report+1]=T('POSTCHECK_FAILED',audit.count)
+        for _,line in ipairs(audit.lines) do report[#report+1]=line end
+        if audit.count>#audit.lines then report[#report+1]=T('POSTCHECK_MORE',audit.count-#audit.lines) end
+    end
     NS.db.lastReport = table.concat(report,'\n')
+    if NS.ChatRestoreReport then NS.ChatRestoreReport(NS.db.lastReport) end
     return NS.db.lastReport
 end
