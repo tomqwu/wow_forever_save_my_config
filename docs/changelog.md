@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Add a selectable **Inspect saved data** view for keybindings, macros, addon variables, game settings, action bars, source metadata, and capture notes.
+- Render nested addon values as deterministic readable text while retaining Export as the complete exact machine-readable profile.
+- Label the main profile details as selectable and retain **Select all** in generated-text and import/export dialogs.
+
 ## 0.3.0
 
 - Add a visible minimap icon that opens and closes the profile GUI.

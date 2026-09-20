@@ -160,7 +160,7 @@ function NS.OpenUI()
             'Only loaded, registered addons are captured. Unavailable variables are listed in capture notes.')
     end)
     button(panel,'Last restore report',22,-552,250,function() showDialog('Last restore report',NS.db.lastReport or 'No restore yet.') end)
-    text(panel,'PROFILE DETAILS',302,-108,'GameFontNormalSmall')
+    text(panel,'PROFILE DETAILS (SELECTABLE)',302,-108,'GameFontNormalSmall')
     panel.details = scrollBox(panel,302,-134,608,224)
     text(panel,'SAVE / RESTORE SECTIONS',302,-378,'GameFontNormalSmall')
     for i,key in ipairs(NS.Sections) do
@@ -208,11 +208,10 @@ function NS.OpenUI()
             return 'Imported '..p.name..'. '..NS.Codec.checksumName..' '..checksum..' verified. Review before restoring.'
         end,'Paste a complete '..NS.Codec.format..' export. Import verifies its checksum and saves a new profile without applying settings.')
     end)
-    button(panel,'Macros',667,-565,95,function()
+    button(panel,'Inspect',667,-565,95,function()
         local p = current(); if not p then status('Select a profile first.'); return end
-        local lines = {}
-        for _,m in ipairs(p.data.macros or {}) do lines[#lines+1] = (m.character and '[Character] ' or '[Account] ')..m.name..'\n'..m.body..'\n' end
-        showDialog('Inspect saved macros',table.concat(lines,'\n'))
+        showDialog('Inspect saved data',NS.Inspect(p),nil,nil,
+            'Readable view of exactly what this profile captured. Select text or use Select all; Export contains the complete machine-readable profile.')
     end)
     button(panel,'Delete',772,-565,75,function()
         local p = current(); if not p or selected == false then status('Select a saved profile to delete.'); return end

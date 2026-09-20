@@ -1,6 +1,6 @@
 local _, NS = ...
 local C, P = NS.Codec, NS.Providers
-NS.Version = '0.3.0'
+NS.Version = '0.4.0'
 NS.Sections = {'bindings', 'macros', 'addons', 'cvars', 'actions'}
 NS.Labels = {bindings = 'Keybindings (both sets)', macros = 'Macros (merge / update)', addons = 'Addon saved variables', cvars = 'Game, camera & sound', actions = 'Action bars (120 slots)'}
 local function str(v, max) return type(v) == 'string' and #v <= max end
@@ -150,6 +150,92 @@ function NS.Summary(p)
         rows[#rows+1] = ''; rows[#rows+1] = 'Capture notes:'
         for _,warning in ipairs(p.warnings) do if type(warning) == 'string' then rows[#rows+1] = warning end end
     end
+    return table.concat(rows,'\n')
+end
+local function inspectKeys(t)
+    local keys={}
+    for key in pairs(t) do keys[#keys+1]=key end
+    table.sort(keys,function(a,b)
+        if type(a)~=type(b) then return type(a)<type(b) end
+        if type(a)=='boolean' then return not a and b end
+        return a<b
+    end)
+    return keys
+end
+local function inspectScalar(value)
+    if type(value)~='string' then return tostring(value) end
+    return '"'..value:gsub('[%c\\"]',function(char)
+        if char=='\n' then return '\\n' end
+        if char=='\r' then return '\\r' end
+        if char=='\t' then return '\\t' end
+        if char=='\\' then return '\\\\' end
+        if char=='"' then return '\\"' end
+        return string.format('\\%03d',char:byte())
+    end)..'"'
+end
+function NS.Inspect(profile)
+    NS.Validate(profile)
+    local rows,bytes,truncated={},0,false
+    local function add(line)
+        if truncated then return false end
+        line=tostring(line or '')
+        if bytes+#line+1>1024*1024-160 then truncated=true;return false end
+        rows[#rows+1]=line;bytes=bytes+#line+1;return true
+    end
+    local function value(v,indent,label)
+        if truncated then return end
+        if type(v)~='table' then add(indent..label..inspectScalar(v));return end
+        if not add(indent..label..'{') then return end
+        for _,key in ipairs(inspectKeys(v)) do
+            value(v[key],indent..'  ','['..inspectScalar(key)..'] = ')
+            if truncated then break end
+        end
+        add(indent..'}')
+    end
+    add('PROFILE');add('Name: '..profile.name)
+    add('Character: '..profile.source.character);add('Class: '..profile.source.class)
+    add('Client: '..profile.source.build);add('Saved: '..date('%Y-%m-%d %H:%M',profile.created))
+    local data=profile.data
+    if data.bindings then
+        add('');add('KEYBINDINGS');add('Active set: '..(data.bindings.active==1 and 'Account' or 'Character'))
+        for set=1,2 do
+            add((set==1 and 'Account' or 'Character')..' set:')
+            for _,key in ipairs(inspectKeys(data.bindings.sets[set])) do
+                add('  '..inspectScalar(key)..' = '..inspectScalar(data.bindings.sets[set][key]))
+            end
+        end
+    end
+    if data.macros then
+        add('');add('MACROS')
+        for index,macro in ipairs(data.macros) do
+            add(string.format('%d. [%s] %s',index,macro.character and 'Character' or 'Account',inspectScalar(macro.name)))
+            add('   Icon: '..inspectScalar(macro.icon));add('   Body: '..inspectScalar(macro.body))
+        end
+    end
+    if data.addons then
+        add('');add('ADDON SETTINGS')
+        for _,addon in ipairs(inspectKeys(data.addons)) do
+            add(addon..':')
+            for _,name in ipairs(inspectKeys(data.addons[addon].variables)) do
+                local entry=data.addons[addon].variables[name]
+                if entry.present then value(entry.value,'  ',name..' ['..entry.scope..'] = ')
+                else add('  '..name..' ['..entry.scope..'] = <not present>') end
+            end
+        end
+    end
+    if data.cvars then
+        add('');add('GAME SETTINGS')
+        for _,key in ipairs(inspectKeys(data.cvars)) do add('  '..key..' = '..inspectScalar(data.cvars[key])) end
+    end
+    if data.actions then
+        add('');add('ACTION BARS')
+        for _,slot in ipairs(inspectKeys(data.actions)) do value(data.actions[slot],'  ','Slot '..slot..' = ') end
+    end
+    if profile.warnings and #profile.warnings>0 then
+        add('');add('CAPTURE NOTES')
+        for _,warning in ipairs(profile.warnings) do add('  '..warning) end
+    end
+    if truncated then rows[#rows+1]='\n[Readable view truncated at 1 MiB. Export contains the complete exact profile.]' end
     return table.concat(rows,'\n')
 end
 function NS.Restore(profile, sections)

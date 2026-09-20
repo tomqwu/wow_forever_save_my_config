@@ -114,6 +114,14 @@ test('save/import collision preserves old profile and import never applies setti
     equal(NS.db.profiles.Profile,saved); equal(live,before)
     throws(function() NS.Save('Profile',all) end)
 end)
+test('inspect exposes readable saved bindings, macros, addon values, CVars and actions',function()
+    reset();local p=NS.Capture('Readable',all);local shown=NS.Inspect(p)
+    for _,expected in ipairs({'KEYBINDINGS','"SPACE" = "JUMP"','MACROS','"/petattack"',
+        'ADDON SETTINGS','ExampleDB [account]','["scale"] = 1.5','GAME SETTINGS',
+        'Sound_MasterVolume = "0.5"','ACTION BARS','Slot 1 = {'}) do
+        assert(shown:find(expected,1,true),expected..' missing from inspection')
+    end
+end)
 test('schema refuses malformed actions, unknown CVars and self-targeting globals',function()
     local p=NS.Capture('Test',all)
     p.data.actions[121]={kind='empty'}; throws(function() NS.Validate(p) end); p.data.actions[121]=nil
@@ -290,7 +298,10 @@ test('GUI smoke: save, select, export, import, coverage, review, cancel, recover
     click('Addon coverage');click('Close')
     click('Review restore'); assert(ForeverConfigDialog.shown);click('Apply selected');assert(NS.db.recovery)
     click('Last restore report');click('Close'); click('Recovery snapshot')
-    click('Macros');click('Close');SlashCmdList.FOREVERSAVEMYCONFIG()
+    click('Inspect');assert(ForeverConfigDialog.content=='')
+    assert(ForeverConfigDialog.shown and ForeverConfigDialog.title.content=='Inspect saved data')
+    assert(ForeverConfigDialog.box:GetText():find('KEYBINDINGS',1,true));click('Close')
+    SlashCmdList.FOREVERSAVEMYCONFIG()
     ForeverConfigDialog:SetPoint('BOTTOMRIGHT',UIParent,'BOTTOMRIGHT',-20,20)
     ForeverConfigDialog.scripts.OnDragStop(ForeverConfigDialog)
     assert(NS.db.ui.positions.dialog.x==-20)
