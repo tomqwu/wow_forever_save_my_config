@@ -54,10 +54,9 @@ acceptance is complete.
 The repository secret `CURSE_FORGE` is consumed only inside GitHub Actions.
 Repository variable `CURSEFORGE_PROJECT_ID` is set to **1704390**, supplied by
 the owner. Hunter's Friend project 1700438 is explicitly rejected.
-`CURSEFORGE_PUBLISH_ENABLED=false` enforces the current publication hold.
-Both main-release and manual uploads are disabled unless this variable is
-explicitly set to `true`; manual dry runs remain available. Only enable publishing
-after the owner explicitly resumes it.
+`CURSEFORGE_PUBLISH_ENABLED=true` enables publication after the owner explicitly
+resumed it on 2026-09-20. Every successful `main` release uploads its tested ZIP;
+manual dry runs remain available for credential and game-version validation.
 
 Run **Publish Save My Config to CurseForge** with an existing GitHub release tag.
 The manual workflow defaults to a dry run: it verifies the released ZIP, token,

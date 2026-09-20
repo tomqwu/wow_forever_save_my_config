@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- Enable automatic CurseForge beta publication for project 1704390 after each successful `main` release.
+- Publish the same tested ZIP attached to the matching GitHub release and preserve its upload receipt.
+
 ## 0.2.0
 
 - Put the Save My Config artwork in the window header and addon metadata.

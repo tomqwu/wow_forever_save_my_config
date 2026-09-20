@@ -1,6 +1,6 @@
 # CurseForge project setup — ready to copy
 
-Draft prepared for the 0.2.0 preview. **Publishing remains on hold** until the owner finishes the project and explicitly asks to publish. No project page or file has been submitted as part of this preparation.
+Project information for the 0.2.1 beta. Publishing was explicitly enabled by the owner on 2026-09-20; successful `main` releases now upload their tested ZIP automatically.
 
 | Field | Value |
 | --- | --- |
@@ -19,19 +19,19 @@ Draft prepared for the 0.2.0 preview. **Publishing remains on hold** until the o
 | License | Suggested initial selection: **All Rights Reserved**. The repository currently has no declared open-source license; do not select MIT/GPL without intentionally adding that license. |
 | Required dependencies | **None**; Hunter's Friend is not required. |
 
-## File details for when publishing resumes
+## File details
 
 | Field | Value |
 | --- | --- |
-| Existing addon version | **0.2.0** |
-| Display name | **Forever - Save My Config v0.2.0** |
+| Existing addon version | **0.2.1** |
+| Display name | **Forever - Save My Config v0.2.1** |
 | Release type | **Beta** (preview; live-game validation pending) |
-| ZIP asset | `ForeverSaveMyConfig-v0.2.0.zip` from the GitHub release created from `main` |
+| ZIP asset | `ForeverSaveMyConfig-v0.2.1.zip` from the GitHub release created from `main` |
 | Target game version | **1.60.1**, Interface **16001**; select the exact Forever version rather than a different Classic/Retail version. |
-| Changelog | Matching 0.2.0 entry in [changelog.md](changelog.md). |
+| Changelog | Matching 0.2.1 entry in [changelog.md](changelog.md). |
 | CurseForge project ID | **1704390** (supplied by the owner). |
 
-The GitHub Actions secret `CURSE_FORGE` is already present. The repository variable `CURSEFORGE_PROJECT_ID` is set to **1704390**. `CURSEFORGE_PUBLISH_ENABLED=false` keeps uploads disabled until publication is explicitly requested. Do not use Hunter's Friend's project ID. Creating this copy does not trigger an upload.
+The GitHub Actions secret `CURSE_FORGE` is already present. The repository variable `CURSEFORGE_PROJECT_ID` is set to **1704390**. `CURSEFORGE_PUBLISH_ENABLED=true` enables uploads after the owner explicitly resumed publishing. Do not use Hunter's Friend's project ID.
 
 ## Icon files
 

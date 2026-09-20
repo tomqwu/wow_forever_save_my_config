@@ -24,13 +24,6 @@ Deliver scoped changes to this repository's main branch and verify CI. Every mai
 push releases its tested artifact, so each merge must carry a fresh semantic TOC
 version and exact-version changelog. Releases use ForeverSaveMyConfig-vX.Y.Z and
 never overwrite releases. Initial releases remain
-prereleases until live acceptance is complete. CurseForge project ID: 1704390
-(user supplied). GitHub variable CURSEFORGE_PUBLISH_ENABLED stays false during
-the publication hold.
-
-## Current publication hold
-
-The user explicitly put CurseForge publishing on hold on 2026-09-20 while
-completing project information. Preparing copy, artwork, source commits, and tests
-is authorized. Do not upload files or submit the CurseForge project until the user
-explicitly resumes publishing. Do not infer approval from creation of a project ID.
+prereleases until live acceptance is complete. CurseForge project ID: 1704390 (user supplied). The user explicitly resumed
+publishing on 2026-09-20. Keep CURSEFORGE_PUBLISH_ENABLED=true so each successful
+`main` release uploads the same tested ZIP as a beta and preserves its receipt.
