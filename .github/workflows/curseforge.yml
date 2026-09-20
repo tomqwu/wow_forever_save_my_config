@@ -25,6 +25,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
+    if: inputs.dry_run || vars.CURSEFORGE_PUBLISH_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -46,7 +46,7 @@ jobs:
           python3 scripts/release_notes.py "$RELEASE_TAG" > /tmp/release-notes.md
           gh release create "$RELEASE_TAG" dist/*.zip --verify-tag --prerelease --title "Forever - Save My Config ${RELEASE_TAG#ForeverSaveMyConfig-}" --notes-file /tmp/release-notes.md
   curseforge:
-    if: startsWith(github.ref, 'refs/tags/ForeverSaveMyConfig-v') && vars.CURSEFORGE_PROJECT_ID != ''
+    if: startsWith(github.ref, 'refs/tags/ForeverSaveMyConfig-v') && vars.CURSEFORGE_PROJECT_ID != '' && vars.CURSEFORGE_PUBLISH_ENABLED == 'true'
     needs: release
     uses: ./.github/workflows/curseforge.yml
     with:

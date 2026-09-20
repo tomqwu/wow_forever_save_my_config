@@ -29,9 +29,9 @@ Draft prepared for the existing 0.1.1 preview. **Publishing remains on hold** un
 | ZIP asset | `ForeverSaveMyConfig-v0.1.1.zip` from the existing GitHub release |
 | Target game version | **1.60.1**, Interface **16001**; select the exact Forever version rather than a different Classic/Retail version. |
 | Changelog | Matching 0.1.1 entry in [changelog.md](changelog.md). |
-| CurseForge project ID | Not assigned to this repository yet; record the numeric ID after creating the project. |
+| CurseForge project ID | **1704390** (supplied by the owner). |
 
-The GitHub Actions secret `CURSE_FORGE` is already present. Once the project is ready and publication is explicitly requested, set the repository variable `CURSEFORGE_PROJECT_ID` to this project's ID. Do not use Hunter's Friend's project ID. Creating this copy does not trigger an upload.
+The GitHub Actions secret `CURSE_FORGE` is already present. The repository variable `CURSEFORGE_PROJECT_ID` is set to **1704390**. `CURSEFORGE_PUBLISH_ENABLED=false` keeps uploads disabled until publication is explicitly requested. Do not use Hunter's Friend's project ID. Creating this copy does not trigger an upload.
 
 ## Icon files
 

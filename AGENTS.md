@@ -22,8 +22,9 @@ restart; updates use /reload. Keep build products and install manifests ignored.
 
 Deliver scoped changes to this repository's main branch and verify CI. Releases
 use ForeverSaveMyConfig-vX.Y.Z, never overwrite releases. Initial releases remain
-prereleases until live acceptance is complete. No CurseForge destination has been
-assigned to this addon.
+prereleases until live acceptance is complete. CurseForge project ID: 1704390
+(user supplied). GitHub variable CURSEFORGE_PUBLISH_ENABLED stays false during
+the publication hold.
 
 ## Current publication hold
 

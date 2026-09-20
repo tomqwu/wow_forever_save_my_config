@@ -45,17 +45,21 @@ CI checks Linux tests and ZIP construction. Tags `ForeverSaveMyConfig-vX.Y.Z` mu
 
 ## CurseForge publishing
 
-The repository secret `CURSE_FORGE` is consumed only inside GitHub Actions. Set
-repository variable `CURSEFORGE_PROJECT_ID` to this addon's numeric CurseForge
-project ID. Hunter's Friend project 1700438 is explicitly rejected. Until a
-separate destination is assigned, tag releases skip the CurseForge job.
+The repository secret `CURSE_FORGE` is consumed only inside GitHub Actions.
+Repository variable `CURSEFORGE_PROJECT_ID` is set to **1704390**, supplied by
+the owner. Hunter's Friend project 1700438 is explicitly rejected.
+`CURSEFORGE_PUBLISH_ENABLED=false` enforces the current publication hold.
+Both tag-triggered and manual uploads are disabled unless this variable is
+explicitly set to `true`; manual dry runs remain available. Only enable publishing
+after the owner explicitly resumes it.
 
 Run **Publish Save My Config to CurseForge** with an existing GitHub release tag.
 The manual workflow defaults to a dry run: it verifies the released ZIP, token,
 and exact game-version lookup without uploading. A dry run can run before the
 project ID is configured; it does not verify project-specific upload permission.
-Set `dry_run=false` only for a configured destination. Future tag releases call
-the publisher automatically after the GitHub release succeeds.
+Set `dry_run=false` only for a configured destination after publishing is enabled.
+Future tag releases call the publisher automatically after the GitHub release
+succeeds when `CURSEFORGE_PUBLISH_ENABLED=true`.
 
 Uploads use the official [CurseForge upload API](https://support.curseforge.com/support/solutions/articles/9000197321-curseforge-api)
 and the existing GitHub ZIP, not a rebuilt artifact. The API must expose the
