@@ -24,3 +24,10 @@ Deliver scoped changes to this repository's main branch and verify CI. Releases
 use ForeverSaveMyConfig-vX.Y.Z, never overwrite releases. Initial releases remain
 prereleases until live acceptance is complete. No CurseForge destination has been
 assigned to this addon.
+
+## Current publication hold
+
+The user explicitly put CurseForge publishing on hold on 2026-09-20 while
+completing project information. Preparing copy, artwork, source commits, and tests
+is authorized. Do not upload files or submit the CurseForge project until the user
+explicitly resumes publishing. Do not infer approval from creation of a project ID.
