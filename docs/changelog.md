@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- Put the Save My Config artwork in the window header and addon metadata.
+- Remember the movable main-window and import/export-dialog positions, remember section choices, and add **All**, **None**, and **Reset layout** controls.
+- Show the Adler-32 checksum on export and confirm it on import while clearly describing its integrity-only purpose.
+- Optimize checksum calculation for large profiles and reject non-canonical Base64 padding.
+- Preserve safe capture notes through import and reject unsafe imported display metadata.
+
 ## 0.1.2
 
 - Release every successful merge or direct push to `main` from the tested CI package.

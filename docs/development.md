@@ -19,7 +19,7 @@ Runtime checks still handle missing APIs and report unsupported settings. Source
 
 ## Data flow
 
-`Registry.lua` defines trusted local addon-to-global mappings. `Codec.lua` encodes primitive data and plain tables using a bounded length-prefixed format, an Adler-32 checksum, and Base64. The checksum detects accidental corruption, not the trustworthiness of the sender. `Providers.lua` reads/restores each category. `Profiles.lua` validates imports, owns the database, and requires a recovery snapshot. `UI.lua` provides the profile manager; `Core.lua` initializes storage and handles the slash commands and pending logout writes.
+`Registry.lua` defines trusted local addon-to-global mappings. `Codec.lua` encodes primitive data and plain tables using a bounded length-prefixed format, Base64, and Adler-32 calculated in 5552-byte blocks. The checksum detects accidental corruption, not the trustworthiness or authorship of the sender. `Providers.lua` reads/restores each category. `Profiles.lua` validates imports, owns the database, and requires a recovery snapshot. `UI.lua` provides the movable profile manager, persisted layout preferences, and visible checksum status; `Core.lua` initializes storage and handles the slash commands and pending logout writes.
 
 An import never changes player settings. Restore uses only the explicitly selected sections and still requires registered, loaded addons. Generic addon restore mutates existing tables to preserve AceDB references; a final logout pass mitigates later in-session cache writes, but does not guarantee event ordering against another addon's logout handler.
 

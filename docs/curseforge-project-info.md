@@ -1,6 +1,6 @@
 # CurseForge project setup — ready to copy
 
-Draft prepared for the 0.1.2 preview. **Publishing remains on hold** until the owner finishes the project and explicitly asks to publish. No project page or file has been submitted as part of this preparation.
+Draft prepared for the 0.2.0 preview. **Publishing remains on hold** until the owner finishes the project and explicitly asks to publish. No project page or file has been submitted as part of this preparation.
 
 | Field | Value |
 | --- | --- |
@@ -23,12 +23,12 @@ Draft prepared for the 0.1.2 preview. **Publishing remains on hold** until the o
 
 | Field | Value |
 | --- | --- |
-| Existing addon version | **0.1.2** |
-| Display name | **Forever - Save My Config v0.1.2** |
+| Existing addon version | **0.2.0** |
+| Display name | **Forever - Save My Config v0.2.0** |
 | Release type | **Beta** (preview; live-game validation pending) |
-| ZIP asset | `ForeverSaveMyConfig-v0.1.2.zip` from the GitHub release created from `main` |
+| ZIP asset | `ForeverSaveMyConfig-v0.2.0.zip` from the GitHub release created from `main` |
 | Target game version | **1.60.1**, Interface **16001**; select the exact Forever version rather than a different Classic/Retail version. |
-| Changelog | Matching 0.1.2 entry in [changelog.md](changelog.md). |
+| Changelog | Matching 0.2.0 entry in [changelog.md](changelog.md). |
 | CurseForge project ID | **1704390** (supplied by the owner). |
 
 The GitHub Actions secret `CURSE_FORGE` is already present. The repository variable `CURSEFORGE_PROJECT_ID` is set to **1704390**. `CURSEFORGE_PUBLISH_ENABLED=false` keeps uploads disabled until publication is explicitly requested. Do not use Hunter's Friend's project ID. Creating this copy does not trigger an upload.

@@ -1,6 +1,8 @@
 local _, NS = ...
 local C = { maxBytes = 8 * 1024 * 1024, maxNodes = 400000, maxDepth = 64 }
 NS.Codec = C
+C.format = 'FSMC1'
+C.checksumName = 'Adler-32'
 local alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 local decode = {}
 for i = 1, #alphabet do decode[alphabet:sub(i,i)] = i-1 end
@@ -88,9 +90,15 @@ function C.Unpack(s)
     return result
 end
 function C.Copy(v) return C.Unpack(C.Pack(v)) end
-local function checksum(s)
+function C.Checksum(s)
     local a,b = 1,0
-    for i = 1,#s do a = (a+s:byte(i))%65521; b = (b+a)%65521 end
+    -- Adler-32's 5552-byte block size keeps intermediates precise and avoids
+    -- two modulo operations for every byte in large addon databases.
+    for first = 1,#s,5552 do
+        local last = math.min(first+5551,#s)
+        for i = first,last do a = a+s:byte(i); b = b+a end
+        a,b = a%65521,b%65521
+    end
     return string.format('%08x', b*65536+a)
 end
 local function base64(s)
@@ -105,12 +113,13 @@ local function base64(s)
 end
 function C.Export(v)
     local s = C.Pack(v)
-    return 'FSMC1:'..checksum(s)..':'..base64(s)
+    local sum = C.Checksum(s)
+    return C.format..':'..sum..':'..base64(s),sum
 end
 function C.Import(text)
     assert(type(text) == 'string' and #text <= C.maxBytes*1.5, 'Import exceeds size limit.')
     text = text:gsub('%s','')
-    local sum, encoded = text:match('^FSMC1:(%x%x%x%x%x%x%x%x):([A-Za-z0-9+/=]+)$')
+    local sum, encoded = text:match('^'..C.format..':(%x%x%x%x%x%x%x%x):([A-Za-z0-9+/=]+)$')
     assert(sum and #encoded%4 == 0, 'Not a Save My Config export.')
     local out = {}
     for i=1,#encoded,4 do
@@ -119,10 +128,13 @@ function C.Import(text)
         assert((decode[c] or c == '=') and (decode[d] or d == '='), 'Invalid encoding.')
         assert(c ~= '=' or d == '=', 'Invalid padding.')
         assert((c ~= '=' and d ~= '=') or i == #encoded-3, 'Invalid padding.')
+        if c == '=' then assert(decode[b]%16 == 0, 'Invalid padding.')
+        elseif d == '=' then assert(decode[c]%4 == 0, 'Invalid padding.') end
         local n = decode[a]*262144+decode[b]*4096+(decode[c] or 0)*64+(decode[d] or 0)
         out[#out+1] = string.char(math.floor(n/65536)%256)..(c ~= '=' and string.char(math.floor(n/256)%256) or '')..(d ~= '=' and string.char(n%256) or '')
     end
     local s = table.concat(out)
-    assert(checksum(s) == sum:lower(), 'Checksum failed: export is incomplete or damaged.')
-    return C.Unpack(s)
+    sum = sum:lower()
+    assert(C.Checksum(s) == sum, 'Checksum failed: export is incomplete or damaged.')
+    return C.Unpack(s),sum
 end

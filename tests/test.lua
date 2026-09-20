@@ -78,7 +78,9 @@ end
 reset()
 test('codec binary / Unicode / booleans / sparse numeric keys round trip',function()
     local v = {unicode='中文 ☃',body='/say "hi"\n\000\255',yes=true,no=false,[false]='key',[78]=12.345,empty={}}
-    equal(v,C.Import(C.Export(v))); equal(v,C.Copy(v)); assert(C.Export(v)==C.Export(copy(v)))
+    local exported,sum=C.Export(v);local imported,verified=C.Import(exported)
+    equal(v,imported);equal(v,C.Copy(v));assert(exported==C.Export(copy(v)))
+    assert(sum==verified and C.Checksum('Wikipedia')=='11e60398')
 end)
 test('codec rejects executable text, truncated, tampered and duplicate data',function()
     throws(function() C.Import('return os.execute("bad")') end)
@@ -88,6 +90,8 @@ test('codec rejects executable text, truncated, tampered and duplicate data',fun
     throws(function() C.Unpack('s9:a') end)
     throws(function() C.Unpack('zjunk') end)
     throws(function() C.Unpack('n3:nan') end)
+    local packed='s1:a';local valid='FSMC1:'..C.Checksum(packed)..':czE6YQ=='
+    assert(C.Import(valid)=='a');throws(function() C.Import(valid:gsub('YQ==','YR==')) end)
 end)
 test('codec bounded cycles, depth, functions, protected values',function()
     local v={};v.self=v; throws(function() C.Pack(v) end)
@@ -105,7 +109,8 @@ test('capture both binding sets retains unsaved active bindings and all keys',fu
 end)
 test('save/import collision preserves old profile and import never applies settings',function()
     local p=NS.Save('Profile',all); local saved=copy(p); local before=copy(live)
-    local imported=NS.Import(NS.Export(p)); assert(imported.name=='Profile (2)')
+    local exported,sum=NS.Export(p);local imported,verified=NS.Import(exported)
+    assert(imported.name=='Profile (2)' and sum==verified and #imported.warnings>#saved.warnings)
     equal(NS.db.profiles.Profile,saved); equal(live,before)
     throws(function() NS.Save('Profile',all) end)
 end)
@@ -114,6 +119,8 @@ test('schema refuses malformed actions, unknown CVars and self-targeting globals
     p.data.actions[121]={kind='empty'}; throws(function() NS.Validate(p) end); p.data.actions[121]=nil
     p.data.cvars.accountName='bad'; throws(function() NS.Validate(p) end); p.data.cvars.accountName=nil
     p.data.addons.Example.variables.ForeverSaveMyConfigDB={scope='account',present=false}
+    throws(function() NS.Validate(p) end)
+    p.data.addons.Example.variables.ForeverSaveMyConfigDB=nil;p.source.character='|Tbad'
     throws(function() NS.Validate(p) end)
     p.schema=2; throws(function() NS.Validate(p) end)
 end)
@@ -194,17 +201,35 @@ test('profile limit, names and future database version reject safely',function()
     throws(function() NS.Save('Overflow',{cvars=true}) end)
     throws(function() NS.CleanName('|Tbad') end)
     throws(function() NS.Initialize({schema=2}) end)
+    throws(function() NS.Initialize({profiles='broken'}) end)
+end)
+test('UI preferences migrate safely and preserve explicit section choices',function()
+    local db={ui={sections={bindings=false},positions='broken'}}
+    NS.Initialize(db)
+    assert(db.ui.sections.bindings==false and db.ui.sections.macros==true)
+    assert(type(db.ui.positions)=='table')
 end)
 -- Exercise frame construction, callbacks, slash commands and logout without a real renderer.
 local objects={}
 local methods={}
 local noop=function() end
-for name in ('SetPoint SetFontObject SetAutoFocus SetMultiLine SetTextInsets SetMaxLetters SetJustifyH SetWidth SetHeight SetJustifyV ClearFocus SetFocus HighlightText SetFrameStrata SetClampedToScreen EnableMouse SetMovable RegisterForDrag StopMovingOrSizing StartMoving SetColorTexture SetAllPoints SetScale SetScrollChild SetVerticalScroll SetFrameLevel RegisterEvent UpdateScrollChildRect'):gmatch('%S+') do methods[name]=noop end
+for name in ('SetFontObject SetAutoFocus SetMultiLine SetTextInsets SetMaxLetters SetJustifyH SetWidth SetHeight SetJustifyV ClearFocus SetFocus HighlightText SetFrameStrata SetClampedToScreen EnableMouse SetMovable RegisterForDrag StopMovingOrSizing StartMoving SetColorTexture SetAllPoints SetScale SetScrollChild SetVerticalScroll SetFrameLevel RegisterEvent UpdateScrollChildRect SetTexCoord'):gmatch('%S+') do methods[name]=noop end
 local function widget(kind)
     local w=setmetatable({kind=kind,scripts={},shown=true,width=960,height=684,content=''}, {__index=methods})
     objects[#objects+1]=w; return w
 end
 function methods:SetScript(name,fn) self.scripts[name]=fn end
+function methods:SetPoint(point,relative,relativePoint,x,y)
+    if type(relative)=='number' then
+        local ox,oy=relative,relativePoint
+        relative,relativePoint,x,y=UIParent,point,ox,oy
+    end
+    self.point={point,relative or UIParent,relativePoint or point,x or 0,y or 0}
+end
+function methods:GetPoint() return unpack(self.point or {'CENTER',UIParent,'CENTER',0,0}) end
+function methods:ClearAllPoints() self.point=nil end
+function methods:GetName() return self.name end
+function methods:SetTexture(value) self.texture=value end
 function methods:SetText(t) self.content=t; if self.scripts.OnTextChanged then self.scripts.OnTextChanged(self) end end
 function methods:GetText() return self.content end
 function methods:SetSize(w,h) self.width=w;self.height=h end
@@ -223,7 +248,7 @@ function methods:Show() self.shown=true end
 function methods:Hide() self.shown=false end
 function methods:CreateFontString() return widget('FontString') end
 function methods:CreateTexture() return widget('Texture') end
-CreateFrame=function(kind,name) local w=widget(kind);if name then _G[name]=w end; return w end
+CreateFrame=function(kind,name) local w=widget(kind);w.name=name;if name then _G[name]=w end; return w end
 UIParent=widget('Root'); UISpecialFrames={}; SlashCmdList={}; DEFAULT_CHAT_FRAME={AddMessage=noop}
 ReloadUI=noop
 load('UI');load('Core')
@@ -232,12 +257,31 @@ local function click(label)
     error('Missing button '..label)
 end
 test('GUI smoke: save, select, export, import, coverage, review, cancel, recovery',function()
-    reset(); NS.OpenUI(); click('Save new'); assert(NS.Count(NS.db.profiles)==1)
+    reset();NS.db.ui.positions.main={point='INVALID',relativePoint='CENTER',x=0,y=0};NS.OpenUI()
+    local iconFound=false
+    for _,w in ipairs(objects) do if w.texture and w.texture:find('SaveMyConfig',1,true) then iconFound=true end end
+    assert(iconFound and NS.db.ui.sections.bindings and NS.db.ui.positions.main==nil)
+    ForeverConfigWindow:ClearAllPoints();ForeverConfigWindow:SetPoint('TOPLEFT',UIParent,'TOPLEFT',123,-45)
+    ForeverConfigWindow.scripts.OnDragStop(ForeverConfigWindow)
+    assert(NS.db.ui.positions.main.x==123 and NS.db.ui.positions.main.y==-45)
+    click('Save new'); assert(NS.Count(NS.db.profiles)==1)
     click('Export'); assert(ForeverConfigDialog.shown);click('Close')
     click('Addon coverage');click('Close')
     click('Review restore'); assert(ForeverConfigDialog.shown);click('Apply selected');assert(NS.db.recovery)
     click('Last restore report');click('Close'); click('Recovery snapshot')
     click('Macros');click('Close');SlashCmdList.FOREVERSAVEMYCONFIG()
+    ForeverConfigDialog:SetPoint('BOTTOMRIGHT',UIParent,'BOTTOMRIGHT',-20,20)
+    ForeverConfigDialog.scripts.OnDragStop(ForeverConfigDialog)
+    assert(NS.db.ui.positions.dialog.x==-20)
+    for _,w in ipairs(objects) do
+        if w.kind=='CheckButton' and w.scripts.OnClick then
+            w:SetChecked(false);w.scripts.OnClick(w);break
+        end
+    end
+    assert(NS.db.ui.sections.bindings==false)
+    click('None');for _,key in ipairs(NS.Sections) do assert(NS.db.ui.sections[key]==false) end
+    click('All');for _,key in ipairs(NS.Sections) do assert(NS.db.ui.sections[key]==true) end
+    click('Reset layout');assert(not next(NS.db.ui.positions))
 end)
 test('logout reapplies only staged addon values and does not modify profiles',function()
     assert(NS.pendingAddons); ExampleDB.nested.scale=42

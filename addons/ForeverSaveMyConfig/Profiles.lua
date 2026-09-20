@@ -1,9 +1,10 @@
 local _, NS = ...
 local C, P = NS.Codec, NS.Providers
-NS.Version = '0.1.2'
+NS.Version = '0.2.0'
 NS.Sections = {'bindings', 'macros', 'addons', 'cvars', 'actions'}
 NS.Labels = {bindings = 'Keybindings (both sets)', macros = 'Macros (merge / update)', addons = 'Addon saved variables', cvars = 'Game, camera & sound', actions = 'Action bars (120 slots)'}
 local function str(v, max) return type(v) == 'string' and #v <= max end
+local function safeText(v, max) return str(v,max) and not v:find('[%c|]') end
 local function integer(v, low, high) return type(v) == 'number' and v == math.floor(v) and v >= low and v <= high end
 local function count(t) local n=0; for _ in pairs(t) do n=n+1 end; return n end
 NS.Count = count
@@ -14,8 +15,14 @@ end
 function NS.Validate(profile)
     assert(type(profile) == 'table' and profile.schema == 1, 'Unsupported profile version.')
     assert(str(profile.name,80) and #profile.name > 0, 'Invalid profile name.')
-    assert(type(profile.source) == 'table' and str(profile.source.character,160) and str(profile.source.class,32) and str(profile.source.build,64), 'Invalid source metadata.')
+    assert(type(profile.source) == 'table' and safeText(profile.source.character,160) and safeText(profile.source.class,32) and safeText(profile.source.build,64), 'Invalid source metadata.')
     assert(integer(profile.created,0,9999999999), 'Invalid timestamp.')
+    if profile.warnings ~= nil then
+        assert(type(profile.warnings) == 'table' and count(profile.warnings) <= 200, 'Invalid profile notes.')
+        for key,warning in pairs(profile.warnings) do
+            assert(integer(key,1,#profile.warnings) and safeText(warning,512), 'Invalid profile note.')
+        end
+    end
     local d = profile.data
     assert(type(d) == 'table' and count(d) > 0, 'Empty profile.')
     for key in pairs(d) do assert(P[key], 'Unknown profile section.') end
@@ -62,7 +69,14 @@ end
 function NS.Initialize(db)
     assert(type(db) == 'table', 'Invalid saved database.')
     assert(not db.schema or db.schema == 1, 'Newer saved database: install a matching addon version.')
+    assert(db.profiles == nil or type(db.profiles) == 'table', 'Invalid saved profiles. Back up the SavedVariables file before repairing it.')
     db.schema, db.profiles = 1, db.profiles or {}
+    if type(db.ui) ~= 'table' then db.ui = {} end
+    if type(db.ui.positions) ~= 'table' then db.ui.positions = {} end
+    if type(db.ui.sections) ~= 'table' then db.ui.sections = {} end
+    for _,key in ipairs(NS.Sections) do
+        if type(db.ui.sections[key]) ~= 'boolean' then db.ui.sections[key] = true end
+    end
     NS.db = db
 end
 function NS.Capture(name, sections)
@@ -99,14 +113,18 @@ function NS.Save(name, sections)
     return profile
 end
 function NS.Import(text, name)
-    local p = NS.Validate(C.Import(text))
+    local unpacked,checksum = C.Import(text)
+    local p = NS.Validate(unpacked)
     name = NS.CleanName(name and name:match('%S') and name or p.name)
     local base, suffix = name, 2
     while NS.db.profiles[name] do name = base:sub(1,70)..' ('..suffix..')'; suffix = suffix+1 end
     assert(count(NS.db.profiles) < 20, '20-profile limit reached.')
-    p.name = name; p.warnings = {'Imported profile. Review source and selected sections before restoring.'}
+    p.name = name
+    if type(p.warnings) ~= 'table' then p.warnings = {} end
+    local importNote='Imported profile. Review source and selected sections before restoring.'
+    if p.warnings[1]~=importNote then table.insert(p.warnings,1,importNote) end
     NS.db.profiles[name] = p
-    return p
+    return p,checksum
 end
 function NS.Export(profile) NS.Validate(profile); return C.Export(profile) end
 function NS.Summary(p)

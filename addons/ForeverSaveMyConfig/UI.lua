@@ -1,6 +1,11 @@
 local _, NS = ...
 local panel, selected, page = nil, nil, 1
 local checks, rows = {}, {}
+local dialog
+local iconPath = 'Interface\\AddOns\\ForeverSaveMyConfig\\Textures\\SaveMyConfig'
+local validPoint = {TOP=true,BOTTOM=true,LEFT=true,RIGHT=true,CENTER=true,
+    TOPLEFT=true,TOPRIGHT=true,BOTTOMLEFT=true,BOTTOMRIGHT=true}
+local function finite(v) return type(v)=='number' and v==v and v~=math.huge and v~=-math.huge end
 local function text(parent, value, x, y, font)
     local f = parent:CreateFontString(nil, 'OVERLAY', font or 'GameFontHighlight')
     f:SetPoint('TOPLEFT', x, y); f:SetText(value); f:SetJustifyH('LEFT')
@@ -22,17 +27,37 @@ local function edit(parent, x,y,w,h,multiline)
     background(box,0.075,0.10,0.13)
     return box
 end
-local function window(name, w,h,parent)
+local function savePosition(frame)
+    if not NS.db or not frame.layoutKey then return end
+    local point,_,relativePoint,x,y=frame:GetPoint(1)
+    if validPoint[point] and validPoint[relativePoint] and finite(x) and finite(y) then
+        NS.db.ui.positions[frame.layoutKey]={point=point,relativePoint=relativePoint,x=x,y=y}
+    end
+end
+local function restorePosition(frame)
+    local saved=NS.db and NS.db.ui.positions[frame.layoutKey]
+    frame:ClearAllPoints()
+    if type(saved)=='table' and validPoint[saved.point] and validPoint[saved.relativePoint]
+        and finite(saved.x) and finite(saved.y) and math.abs(saved.x)<=10000 and math.abs(saved.y)<=10000 then
+        frame:SetPoint(saved.point,UIParent,saved.relativePoint,saved.x,saved.y)
+    else
+        if NS.db and frame.layoutKey then NS.db.ui.positions[frame.layoutKey]=nil end
+        frame:SetPoint('CENTER',UIParent,'CENTER',0,0)
+    end
+end
+local function window(name, w,h,parent,layoutKey)
     local f = CreateFrame('Frame',name,parent or UIParent)
-    f:SetSize(w,h); f:SetPoint('CENTER'); f:SetFrameStrata('DIALOG'); f:SetClampedToScreen(true)
+    f.layoutKey=layoutKey
+    f:SetSize(w,h); f:SetFrameStrata('DIALOG'); f:SetClampedToScreen(true)
     f:EnableMouse(true); f:SetMovable(true); f:RegisterForDrag('LeftButton')
-    f:SetScript('OnDragStart',f.StartMoving)
-    f:SetScript('OnDragStop',f.StopMovingOrSizing)
-    f:SetScript('OnHide',f.StopMovingOrSizing)
+    f:SetScript('OnDragStart',function(self) self:StartMoving() end)
+    f:SetScript('OnDragStop',function(self) self:StopMovingOrSizing();savePosition(self) end)
+    f:SetScript('OnHide',function(self) self:StopMovingOrSizing();savePosition(self) end)
     background(f,0.025,0.038,0.055,0.99)
     if UIParent.GetWidth and UIParent.GetHeight then
         f:SetScale(math.min(1, (UIParent:GetWidth()-30)/w, (UIParent:GetHeight()-30)/h))
     end
+    restorePosition(f)
     if UISpecialFrames then table.insert(UISpecialFrames,name) end
     return f
 end
@@ -61,10 +86,9 @@ local function sections()
 end
 local function status(value) panel.status:SetText(value); NS.Say(value) end
 local refresh
-local dialog
 local function showDialog(title, content, actionLabel, action, hint)
     if not dialog then
-        dialog = window('ForeverConfigDialog',820,550,panel)
+        dialog = window('ForeverConfigDialog',820,550,panel,'dialog')
         dialog:SetFrameLevel(panel:GetFrameLevel()+20)
         dialog.title = text(dialog,'',20,-18,'GameFontNormalLarge')
         dialog.hint = text(dialog,'',20,-50,'GameFontHighlightSmall'); dialog.hint:SetWidth(780)
@@ -102,10 +126,24 @@ refresh = function()
 end
 function NS.OpenUI()
     if panel then panel:Show(); refresh(); return end
-    panel = window('ForeverConfigWindow',960,684)
-    text(panel,'FOREVER',22,-18,'GameFontNormalSmall')
-    text(panel,'Save My Config',22,-39,'GameFontNormalLarge')
-    text(panel,'Profiles for the way you play  |  v'..NS.Version,22,-69,'GameFontHighlightSmall')
+    panel = window('ForeverConfigWindow',960,684,nil,'main')
+    local iconBorder=CreateFrame('Frame',nil,panel)
+    iconBorder:SetSize(66,66);iconBorder:SetPoint('TOPLEFT',18,-13)
+    background(iconBorder,0.62,0.48,0.20,1)
+    local icon=iconBorder:CreateTexture(nil,'ARTWORK')
+    icon:SetPoint('TOPLEFT',2,-2);icon:SetPoint('BOTTOMRIGHT',-2,2)
+    icon:SetTexture(iconPath);icon:SetTexCoord(0.04,0.96,0.04,0.96)
+    text(panel,'FOREVER',98,-18,'GameFontNormalSmall')
+    text(panel,'Save My Config',98,-39,'GameFontNormalLarge')
+    text(panel,'Profiles for the way you play  |  v'..NS.Version,98,-69,'GameFontHighlightSmall')
+    local rule=panel:CreateTexture(nil,'ARTWORK');rule:SetColorTexture(0.18,0.32,0.36,0.85)
+    rule:SetPoint('TOPLEFT',18,-94);rule:SetPoint('TOPRIGHT',-18,-94);rule:SetHeight(1)
+    button(panel,'Reset layout',716,-24,130,function()
+        NS.db.ui.positions={}
+        restorePosition(panel)
+        if dialog then restorePosition(dialog) end
+        status('Window positions reset.')
+    end)
     button(panel,'Close',858,-24,80,function() panel:Hide() end)
     text(panel,'SAVED PROFILES',22,-108,'GameFontNormalSmall')
     for i=1,9 do
@@ -127,9 +165,17 @@ function NS.OpenUI()
     for i,key in ipairs(NS.Sections) do
         local x,y = 300+((i-1)%2)*306,-400-math.floor((i-1)/2)*29
         local check = CreateFrame('CheckButton',nil,panel,'UICheckButtonTemplate')
-        check:SetPoint('TOPLEFT',x,y); check:SetSize(26,26); check:SetChecked(true)
+        check:SetPoint('TOPLEFT',x,y); check:SetSize(26,26); check:SetChecked(NS.db.ui.sections[key]~=false)
+        check:SetScript('OnClick',function(self) NS.db.ui.sections[key]=self:GetChecked() and true or false end)
         text(panel,NS.Labels[key],x+30,y-6,'GameFontHighlightSmall'); checks[key] = check
     end
+    local function setAllSections(value)
+        for key,check in pairs(checks) do
+            check:SetChecked(value);NS.db.ui.sections[key]=value
+        end
+    end
+    button(panel,'All',772,-370,65,function() setAllSections(true) end)
+    button(panel,'None',843,-370,75,function() setAllSections(false) end)
     text(panel,'New profile name',302,-498,'GameFontHighlightSmall')
     panel.name = edit(panel,302,-519,402,30); panel.name:SetMaxLetters(80)
     panel.name:SetText('My settings '..date('%m-%d %H%M'))
@@ -151,14 +197,15 @@ function NS.OpenUI()
     end)
     button(panel,'Export',457,-565,95,function()
         local p = current(); if not p then status('Select a profile first.'); return end
-        local ok,result = pcall(NS.Export,p)
-        if ok then showDialog('Export - '..p.name,result,nil,nil,'Copy all text to a file. Exports contain character names, macros, and selected addon data.')
+        local ok,result,checksum = pcall(NS.Export,p)
+        if ok then showDialog('Export - '..p.name,result,nil,nil,'Copy all text. '..NS.Codec.checksumName..' '..checksum..' detects copy damage; it is not a security signature.')
         else status(result) end
     end)
     button(panel,'Import',562,-565,95,function()
         showDialog('Import a profile','','Import as new',function(value)
-            local p = NS.Import(value); selected = p.name; return 'Imported '..p.name..'. Review it before restoring.'
-        end,'Paste a complete FSMC1 export. Import saves a new profile; it does not apply settings.')
+            local p,checksum = NS.Import(value); selected = p.name
+            return 'Imported '..p.name..'. '..NS.Codec.checksumName..' '..checksum..' verified. Review before restoring.'
+        end,'Paste a complete '..NS.Codec.format..' export. Import verifies its checksum and saves a new profile without applying settings.')
     end)
     button(panel,'Macros',667,-565,95,function()
         local p = current(); if not p then status('Select a profile first.'); return end
