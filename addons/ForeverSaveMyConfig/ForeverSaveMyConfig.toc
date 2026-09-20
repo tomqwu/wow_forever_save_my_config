@@ -2,7 +2,7 @@
 ## Title: Forever - Save My Config
 ## Notes: Player profiles for bindings, macros, addon data, action bars, and game settings.
 ## Author: tomqwu
-## Version: 0.1.0
+## Version: 0.1.1
 ## SavedVariables: ForeverSaveMyConfigDB
 Registry.lua
 Codec.lua

@@ -1,6 +1,6 @@
 local _, NS = ...
 local C, P = NS.Codec, NS.Providers
-NS.Version = '0.1.0'
+NS.Version = '0.1.1'
 NS.Sections = {'bindings', 'macros', 'addons', 'cvars', 'actions'}
 NS.Labels = {bindings = 'Keybindings (both sets)', macros = 'Macros (merge / update)', addons = 'Addon saved variables', cvars = 'Game, camera & sound', actions = 'Action bars (120 slots)'}
 local function str(v, max) return type(v) == 'string' and #v <= max end

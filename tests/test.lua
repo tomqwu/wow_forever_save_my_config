@@ -160,6 +160,10 @@ test('macro merge scopes, unrelated preservation and ambiguous names',function()
     local report={}; NS.Providers.macros.restore(p.data.macros,report)
     assert(#report==1 and macros[1].body=='/old')
 end)
+test('macro icon changes restore even when the body matches',function()
+    reset(); local p=NS.Capture('Test',all); macros[1].icon=999
+    NS.Restore(p,{macros=true}); assert(macros[1].icon==1)
+end)
 test('macro capacity is checked before changes',function()
     reset(); local p=NS.Capture('Test',all)
     for i=1,120 do macros[i]={name='M'..i,icon=1,body='/say old'} end
@@ -173,6 +177,12 @@ test('action restore resolves macro identity, clears empty, skips missing spells
     local report=NS.Restore(p,{actions=true})
     assert(actions[2].id==122 and actions[4]==nil and actions[1].id==123)
     assert(report:find('original slot preserved',1,true))
+end)
+test('action placement rejection is reported even if the previous slot has the same type',function()
+    reset(); local p=NS.Capture('Test',all); p.data.actions[1].id=456
+    local original=PlaceAction; PlaceAction=function() end
+    local report=NS.Restore(p,{actions=true}); PlaceAction=original
+    assert(report:find('Client did not place the requested action',1,true) and actions[1].id==123)
 end)
 test('restore requires empty cursor and at least one selected section',function()
     reset(); local p=NS.Capture('Test',all); cursor={kind='item',id=4}

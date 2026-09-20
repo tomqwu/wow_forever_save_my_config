@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Restore changed macro icons even when the macro name and body already match.
+- Verify the action ID after placement so rejected same-type replacements are reported.
+- Add regression tests for both cases. The release remains a preview pending live-game validation.
+
 ## 0.1.0
 
 Initial preview for WoW Forever Interface 16001.

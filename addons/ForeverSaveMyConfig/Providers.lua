@@ -117,13 +117,15 @@ function P.macros.restore(data, report)
     assert(a+needed[1] <= account and b+needed[2] <= character, 'Not enough free macro slots; macros were not changed.')
     for _,m in ipairs(data) do
         local index, exact, count = findMacro(m)
+        if exact then local _, icon = GetMacroInfo(index); exact = icon == m.icon end
         if not exact then
             if index then assert(api('EditMacro')(index, m.name, m.icon, m.body), 'Could not update macro '..m.name)
             elseif count == 0 then assert(api('CreateMacro')(m.name, m.icon, m.body, m.character), 'Could not create macro '..m.name)
             else report[#report+1] = 'Skipped ambiguous macro name: '..m.name end
             if index or count == 0 then
-                local _, verified = findMacro(m)
-                assert(verified, 'Macro was not saved exactly (length or client restriction): '..m.name)
+                local savedIndex, verified = findMacro(m)
+                local _, savedIcon = GetMacroInfo(savedIndex or 0)
+                assert(verified and savedIcon == m.icon, 'Macro was not saved exactly (length or client restriction): '..m.name)
             end
         end
     end
@@ -235,6 +237,7 @@ function P.actions.restore(data, report)
     assert(not api('GetCursorInfo')(), 'Clear your cursor before restoring action bars.')
     for slot, action in pairs(data) do
         local ok, err = pcall(function()
+            local expectedID = action.id
             if action.kind == 'empty' then
                 api('PickupAction')(slot); api('ClearCursor')()
                 assert(not GetActionInfo(slot), 'Client did not clear this slot.'); return
@@ -244,12 +247,12 @@ function P.actions.restore(data, report)
             elseif action.kind == 'item' then api('PickupItem')(action.id)
             elseif action.kind == 'macro' then
                 local index, exact = findMacro(action.macro)
-                assert(index and exact, 'Matching macro is unavailable.'); api('PickupMacro')(index)
+                assert(index and exact, 'Matching macro is unavailable.'); expectedID = index; api('PickupMacro')(index)
             end
             assert(GetCursorInfo(), 'Spell/item is unavailable; original slot preserved.')
             api('PlaceAction')(slot); api('ClearCursor')()
-            local kind = GetActionInfo(slot)
-            assert(kind == action.kind, 'Client did not place this action.')
+            local kind, id = GetActionInfo(slot)
+            assert(kind == action.kind and id == expectedID, 'Client did not place the requested action.')
         end)
         if not ok then
             if ClearCursor then ClearCursor() end

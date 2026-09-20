@@ -2,7 +2,7 @@
 
 A standalone profile manager for **WoW Forever 1.60.x** (Interface **16001**), built using the compatibility and delivery workflow from [Forever - Hunter's Friend](https://github.com/tomqwu/wow_forever_hunters_friend).
 
-Open **`/fconfig`** or **`/fsmc`** to save named profiles, inspect their contents, restore selected sections, and copy/paste exports. Version **0.1.0** is an initial preview: tested with mocked client APIs and synthetic Windows backup data, not yet validated inside a running game.
+Open **`/fconfig`** or **`/fsmc`** to save named profiles, inspect their contents, restore selected sections, and copy/paste exports. Version **0.1.1** is an initial preview: tested with mocked client APIs and synthetic Windows backup data, not yet validated inside a running game.
 
 ## What it saves
 
