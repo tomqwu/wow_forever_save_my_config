@@ -42,3 +42,26 @@ CI checks Linux tests and ZIP construction. Tags `ForeverSaveMyConfig-vX.Y.Z` mu
 7. Test known spell/item/macro slots, saved empty slots, and unavailable spells on a different character. Check cursor preservation and protected-action errors.
 8. Enter combat and verify saves/restores are blocked before mutation. Leave combat and test recovery and restore error reporting.
 9. Test the full offline backup and restore on a disposable copy of a client directory, not the only copy of real settings.
+
+## CurseForge publishing
+
+The repository secret `CURSE_FORGE` is consumed only inside GitHub Actions. Set
+repository variable `CURSEFORGE_PROJECT_ID` to this addon's numeric CurseForge
+project ID. Hunter's Friend project 1700438 is explicitly rejected. Until a
+separate destination is assigned, tag releases skip the CurseForge job.
+
+Run **Publish Save My Config to CurseForge** with an existing GitHub release tag.
+The manual workflow defaults to a dry run: it verifies the released ZIP, token,
+and exact game-version lookup without uploading. A dry run can run before the
+project ID is configured; it does not verify project-specific upload permission.
+Set `dry_run=false` only for a configured destination. Future tag releases call
+the publisher automatically after the GitHub release succeeds.
+
+Uploads use the official [CurseForge upload API](https://support.curseforge.com/support/solutions/articles/9000197321-curseforge-api)
+and the existing GitHub ZIP, not a rebuilt artifact. The API must expose the
+exact Forever game version. Preview files are uploaded as beta. Success writes a
+receipt containing file ID, project ID, game-version ID, tag, and ZIP SHA-256 to
+the GitHub release and workflow artifacts. Existing matching receipts skip repeat
+uploads. A failed or uncertain POST must not be retried without checking the
+project's Files page; the API does not offer an idempotency key. File acceptance
+does not imply moderation approval or an update to project-page metadata.
