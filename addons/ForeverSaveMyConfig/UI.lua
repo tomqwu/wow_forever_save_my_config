@@ -1,4 +1,5 @@
 local _, NS = ...
+local L,T=NS.L,NS.Text
 local panel, selected, page = nil, nil, 1
 local checks, rows = {}, {}
 local dialog
@@ -101,10 +102,10 @@ local function showDialog(title, content, actionLabel, action, hint)
                 if result then status(result) end
             else dialog.error:SetText('|cffff8888'..tostring(result)..'|r') end
         end)
-        button(dialog,'Select all',204,-510,120,function() dialog.box:SetFocus(); dialog.box:HighlightText() end)
-        button(dialog,'Close',684,-510,110,function() dialog:Hide() end)
+        button(dialog,L.SELECT_ALL,204,-510,120,function() dialog.box:SetFocus(); dialog.box:HighlightText() end)
+        button(dialog,L.CLOSE,684,-510,110,function() dialog:Hide() end)
     end
-    dialog.title:SetText(title); dialog.hint:SetText(hint or 'Ctrl+A selects all. Ctrl+C copies. Ctrl+V pastes.')
+    dialog.title:SetText(title); dialog.hint:SetText(hint or L.COPY_HINT)
     dialog.error:SetText(''); dialog.box:SetText(content or ''); dialog.box:ClearFocus(); dialog.scroll:SetVerticalScroll(0)
     dialog.callback = action
     dialog.action:SetText(actionLabel or ''); dialog.action:SetShown(action ~= nil)
@@ -114,14 +115,14 @@ refresh = function()
     if not panel then return end
     local names = {}; for name in pairs(NS.db.profiles) do names[#names+1] = name end; table.sort(names)
     local pages = math.max(1,math.ceil(#names/9)); page = math.max(1,math.min(page,pages))
-    panel.page:SetText(page..' / '..pages..'  |  '..#names..' of 20 profiles')
+    panel.page:SetText(T('PAGE',page,pages,#names))
     for i,row in ipairs(rows) do
         local name = names[(page-1)*9+i]
         row.profileName = name; row:SetShown(name ~= nil)
         if name then row:SetText((selected == name and '|cff6ee7c0> ' or '')..name:sub(1,29)) end
     end
     local p = current()
-    panel.details:SetText(p and NS.Summary(p) or 'Your setup, ready to come back to.\n\n1. Choose the sections below.\n2. Give your profile a name and save.\n3. Export a copy somewhere safe.\n\nSelect a profile to review and restore it.\n\nAddon coverage lists captured, unloaded, and\nunregistered addons. Run the registry scanner\nafter adding new addons.\n\nUse the included offline backup tool for the\nentire WTF folder, including other characters.')
+    panel.details:SetText(p and NS.Summary(p) or L.EMPTY_DETAILS)
     panel.details:ClearFocus()
 end
 function NS.OpenUI()
@@ -134,19 +135,19 @@ function NS.OpenUI()
     icon:SetPoint('TOPLEFT',2,-2);icon:SetPoint('BOTTOMRIGHT',-2,2)
     icon:SetTexture(iconPath);icon:SetTexCoord(0.04,0.96,0.04,0.96)
     text(panel,'FOREVER',98,-18,'GameFontNormalSmall')
-    text(panel,'Save My Config',98,-39,'GameFontNormalLarge')
-    text(panel,'Profiles for the way you play  |  v'..NS.Version,98,-69,'GameFontHighlightSmall')
+    text(panel,L.TITLE,98,-39,'GameFontNormalLarge')
+    text(panel,T('TAGLINE',NS.Version),98,-69,'GameFontHighlightSmall')
     local rule=panel:CreateTexture(nil,'ARTWORK');rule:SetColorTexture(0.18,0.32,0.36,0.85)
     rule:SetPoint('TOPLEFT',18,-94);rule:SetPoint('TOPRIGHT',-18,-94);rule:SetHeight(1)
-    button(panel,'Reset layout',716,-24,130,function()
+    button(panel,L.RESET_LAYOUT,716,-24,130,function()
         NS.db.ui.positions={}
         restorePosition(panel)
         if dialog then restorePosition(dialog) end
         if NS.ResetMinimapPosition then NS.ResetMinimapPosition() end
-        status('Window and minimap positions reset.')
+        status(L.RESET_DONE)
     end)
-    button(panel,'Close',858,-24,80,function() panel:Hide() end)
-    text(panel,'SAVED PROFILES',22,-108,'GameFontNormalSmall')
+    button(panel,L.CLOSE,858,-24,80,function() panel:Hide() end)
+    text(panel,L.SAVED_PROFILES,22,-108,'GameFontNormalSmall')
     for i=1,9 do
         local row = button(panel,'',22,-134-(i-1)*33,250,function(self) selected = self.profileName; refresh() end)
         rows[i] = row
@@ -154,15 +155,14 @@ function NS.OpenUI()
     button(panel,'<',22,-440,40,function() page = page-1; refresh() end)
     panel.page = text(panel,'',74,-448,'GameFontHighlightSmall')
     button(panel,'>',232,-440,40,function() page = page+1; refresh() end)
-    button(panel,'Recovery snapshot',22,-480,250,function() selected = false; refresh() end)
-    button(panel,'Addon coverage',22,-516,250,function()
-        showDialog('Addon coverage',table.concat(NS.AddonCoverage(),'\n'),nil,nil,
-            'Only loaded, registered addons are captured. Unavailable variables are listed in capture notes.')
+    button(panel,L.RECOVERY,22,-480,250,function() selected = false; refresh() end)
+    button(panel,L.ADDON_COVERAGE,22,-516,250,function()
+        showDialog(L.ADDON_COVERAGE,table.concat(NS.AddonCoverage(),'\n'),nil,nil,L.COVERAGE_HINT)
     end)
-    button(panel,'Last restore report',22,-552,250,function() showDialog('Last restore report',NS.db.lastReport or 'No restore yet.') end)
-    text(panel,'PROFILE DETAILS (SELECTABLE)',302,-108,'GameFontNormalSmall')
+    button(panel,L.LAST_REPORT,22,-552,250,function() showDialog(L.LAST_REPORT,NS.db.lastReport or L.NO_REPORT) end)
+    text(panel,L.PROFILE_DETAILS,302,-108,'GameFontNormalSmall')
     panel.details = scrollBox(panel,302,-134,608,224)
-    text(panel,'SAVE / RESTORE SECTIONS',302,-378,'GameFontNormalSmall')
+    text(panel,L.SECTIONS,302,-378,'GameFontNormalSmall')
     for i,key in ipairs(NS.Sections) do
         local x,y = 300+((i-1)%2)*306,-400-math.floor((i-1)/2)*29
         local check = CreateFrame('CheckButton',nil,panel,'UICheckButtonTemplate')
@@ -175,56 +175,54 @@ function NS.OpenUI()
             check:SetChecked(value);NS.db.ui.sections[key]=value
         end
     end
-    button(panel,'All',772,-370,65,function() setAllSections(true) end)
-    button(panel,'None',843,-370,75,function() setAllSections(false) end)
-    text(panel,'New profile name',302,-498,'GameFontHighlightSmall')
+    button(panel,L.ALL,772,-370,65,function() setAllSections(true) end)
+    button(panel,L.NONE,843,-370,75,function() setAllSections(false) end)
+    text(panel,L.NEW_NAME,302,-498,'GameFontHighlightSmall')
     panel.name = edit(panel,302,-519,402,30); panel.name:SetMaxLetters(80)
-    panel.name:SetText('My settings '..date('%m-%d %H%M'))
-    button(panel,'Save new',718,-519,208,function()
+    panel.name:SetText(T('DEFAULT_NAME',date('%m-%d %H%M')))
+    button(panel,L.SAVE_NEW,718,-519,208,function()
         local ok,p = pcall(NS.Save,panel.name:GetText(),sections())
-        if ok then selected = p.name; refresh(); status('Saved '..p.name..'. /reload writes profiles to disk.')
+        if ok then selected = p.name; refresh(); status(T('SAVED',p.name))
         else status(tostring(p)) end
     end)
-    button(panel,'Review restore',302,-565,145,function()
-        local p = current(); if not p then status('Select a profile first.'); return end
+    button(panel,L.REVIEW,302,-565,145,function()
+        local p = current(); if not p then status(L.SELECT_PROFILE); return end
         local s,labels = sections(),{}
         for _,key in ipairs(NS.Sections) do if s[key] and p.data[key] then labels[#labels+1] = NS.Labels[key] end end
-        local content = NS.Summary(p)..'\n\nWILL RESTORE:\n'..table.concat(labels,'\n')..
-            '\n\nBoth binding sets are replaced. Account data affects other characters.\nMacros merge by name and scope; unrelated macros stay.\nSaved empty action slots are cleared. Unavailable actions are reported.\nAddon data may contain profiles for other characters, history, or caches.\nAddon authors can rewrite data at logout; check after reload.\nA recovery snapshot is saved before changes. It does not remove newly added macros.'
-        if p.source.character ~= (UnitName('player')..' - '..GetRealmName()) then content = content..'\n\nDifferent character: spells, macros, and addon profile keys may not transfer.' end
-        showDialog('Review restore - '..p.name,content,'Apply selected',function()
-            NS.Restore(p,s); return 'Restore processed. Read Last restore report, then reload for addon settings.'
-        end,'Review the sections and source. Applying changes requires being out of combat.')
+        local content = NS.Summary(p)..'\n\n'..L.WILL_RESTORE..'\n'..table.concat(labels,'\n')..'\n\n'..L.REVIEW_BODY
+        if p.source.character ~= (UnitName('player')..' - '..GetRealmName()) then content = content..'\n\n'..L.DIFFERENT_CHARACTER end
+        showDialog(T('REVIEW_TITLE',p.name),content,L.APPLY_SELECTED,function()
+            NS.Restore(p,s); return L.RESTORE_DONE
+        end,L.REVIEW_HINT)
     end)
-    button(panel,'Export',457,-565,95,function()
-        local p = current(); if not p then status('Select a profile first.'); return end
+    button(panel,L.EXPORT,457,-565,95,function()
+        local p = current(); if not p then status(L.SELECT_PROFILE); return end
         local ok,result,checksum = pcall(NS.Export,p)
-        if ok then showDialog('Export - '..p.name,result,nil,nil,'Copy all text. '..NS.Codec.checksumName..' '..checksum..' detects copy damage; it is not a security signature.')
+        if ok then showDialog(T('EXPORT_TITLE',p.name),result,nil,nil,T('EXPORT_HINT',NS.Codec.checksumName,checksum))
         else status(result) end
     end)
-    button(panel,'Import',562,-565,95,function()
-        showDialog('Import a profile','','Import as new',function(value)
+    button(panel,L.IMPORT,562,-565,95,function()
+        showDialog(L.IMPORT_TITLE,'',L.IMPORT_ACTION,function(value)
             local p,checksum = NS.Import(value); selected = p.name
-            return 'Imported '..p.name..'. '..NS.Codec.checksumName..' '..checksum..' verified. Review before restoring.'
-        end,'Paste a complete '..NS.Codec.format..' export. Import verifies its checksum and saves a new profile without applying settings.')
+            return T('IMPORT_DONE',p.name,NS.Codec.checksumName,checksum)
+        end,T('IMPORT_HINT',NS.Codec.format))
     end)
-    button(panel,'Inspect',667,-565,95,function()
-        local p = current(); if not p then status('Select a profile first.'); return end
-        showDialog('Inspect saved data',NS.Inspect(p),nil,nil,
-            'Readable view of exactly what this profile captured. Select text or use Select all; Export contains the complete machine-readable profile.')
+    button(panel,L.INSPECT,667,-565,95,function()
+        local p = current(); if not p then status(L.SELECT_PROFILE); return end
+        showDialog(L.INSPECT_TITLE,NS.Inspect(p),nil,nil,L.INSPECT_HINT)
     end)
-    button(panel,'Delete',772,-565,75,function()
-        local p = current(); if not p or selected == false then status('Select a saved profile to delete.'); return end
+    button(panel,L.DELETE,772,-565,75,function()
+        local p = current(); if not p or selected == false then status(L.DELETE_SELECT); return end
         local name = selected
-        showDialog('Delete profile','Delete "'..name..'" from this addon?\nThis does not delete your actual game settings.','Delete profile',function()
-            NS.db.profiles[name] = nil; selected = nil; return 'Deleted profile '..name
+        showDialog(L.DELETE_TITLE,T('DELETE_PROMPT',name),L.DELETE_ACTION,function()
+            NS.db.profiles[name] = nil; selected = nil; return T('DELETE_DONE',name)
         end)
     end)
-    button(panel,'Reload',857,-565,69,function()
-        if InCombatLockdown and InCombatLockdown() then status('Leave combat before reloading.'); return end
+    button(panel,L.RELOAD,857,-565,69,function()
+        if InCombatLockdown and InCombatLockdown() then status(L.LEAVE_COMBAT_RELOAD); return end
         ReloadUI()
     end)
-    panel.status = text(panel,'Ready. Profiles are written to disk on /reload or normal logout.',22,-618,'GameFontHighlightSmall')
+    panel.status = text(panel,L.READY,22,-618,'GameFontHighlightSmall')
     panel.status:SetWidth(912); panel.status:SetHeight(42); panel.status:SetJustifyV('TOP')
     refresh()
 end
@@ -290,8 +288,8 @@ function NS.RefreshMinimap()
         minimapButton:SetScript('OnEnter',function(self)
             if GameTooltip then
                 GameTooltip:SetOwner(self,'ANCHOR_LEFT')
-                GameTooltip:SetText('Forever - Save My Config')
-                GameTooltip:AddLine('Click: open profiles  |  Drag: move',1,1,1)
+                GameTooltip:SetText('Forever - '..L.TITLE)
+                GameTooltip:AddLine(L.MINIMAP_TOOLTIP,1,1,1)
                 GameTooltip:Show()
             end
         end)

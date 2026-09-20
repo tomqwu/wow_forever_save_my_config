@@ -8,7 +8,8 @@ local function test(name, fn)
 end
 local function throws(fn) assert(not pcall(fn), 'Expected rejection') end
 local function equal(a,b) assert(NS.Codec.Pack(a) == NS.Codec.Pack(b), 'Values differ') end
-load('Registry'); load('Codec')
+GetLocale=function() return 'enUS' end
+load('Locales');load('Registry');load('Codec')
 local C = NS.Codec
 local constants = {MAX_ACCOUNT_MACROS = 120, MAX_CHARACTER_MACROS = 30}
 Constants = {MacroConsts = constants}
@@ -76,6 +77,30 @@ local function reset()
     NS.pendingAddons=nil; NS.Initialize({})
 end
 reset()
+test('locale tables translate Chinese and fall back completely to English',function()
+    assert(NS.Locale=='enUS' and NS.L.EXPORT=='Export')
+    assert(NS.Text('UNKNOWN_LOCALE_KEY')=='UNKNOWN_LOCALE_KEY')
+    assert(NS.Locales.zhCN.EXPORT=='导出' and NS.Locales.zhTW.EXPORT=='匯出')
+    assert(NS.Locales.zhCN.EXPORT_TITLE=='导出 - %s')
+    assert(NS.Text('PAGE',1,2,3)=='1 / 2  |  3 of 20 profiles')
+    local function formats(value)
+        local found={};for token in value:gmatch('%%[sd]') do found[#found+1]=token end
+        return table.concat(found,',')
+    end
+    for key in pairs(NS.Locales.enUS) do
+        assert(NS.Locales.zhCN[key],key..' missing in zhCN')
+        assert(NS.Locales.zhTW[key],key..' missing in zhTW')
+        assert(formats(NS.Locales.enUS[key])==formats(NS.Locales.zhCN[key]),key..' format differs in zhCN')
+        assert(formats(NS.Locales.enUS[key])==formats(NS.Locales.zhTW[key]),key..' format differs in zhTW')
+    end
+    local cn={};GetLocale=function() return 'zhCN' end
+    assert(loadfile('addons/ForeverSaveMyConfig/Locales.lua'))('ForeverSaveMyConfig',cn)
+    assert(cn.Locale=='zhCN' and cn.L.INSPECT_TITLE=='查看已保存数据')
+    local fallback={};GetLocale=function() return 'deDE' end
+    assert(loadfile('addons/ForeverSaveMyConfig/Locales.lua'))('ForeverSaveMyConfig',fallback)
+    assert(fallback.Locale=='deDE' and fallback.L.INSPECT_TITLE=='Inspect saved data')
+    GetLocale=function() return 'enUS' end
+end)
 test('codec binary / Unicode / booleans / sparse numeric keys round trip',function()
     local v = {unicode='中文 ☃',body='/say "hi"\n\000\255',yes=true,no=false,[false]='key',[78]=12.345,empty={}}
     local exported,sum=C.Export(v);local imported,verified=C.Import(exported)
@@ -117,7 +142,7 @@ end)
 test('inspect exposes readable saved bindings, macros, addon values, CVars and actions',function()
     reset();local p=NS.Capture('Readable',all);local shown=NS.Inspect(p)
     for _,expected in ipairs({'KEYBINDINGS','"SPACE" = "JUMP"','MACROS','"/petattack"',
-        'ADDON SETTINGS','ExampleDB [account]','["scale"] = 1.5','GAME SETTINGS',
+        'ADDON SETTINGS','ExampleDB [Account]','["scale"] = 1.5','GAME SETTINGS',
         'Sound_MasterVolume = "0.5"','ACTION BARS','Slot 1 = {'}) do
         assert(shown:find(expected,1,true),expected..' missing from inspection')
     end

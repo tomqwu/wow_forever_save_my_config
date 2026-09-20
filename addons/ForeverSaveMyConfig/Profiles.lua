@@ -1,8 +1,10 @@
 local _, NS = ...
 local C, P = NS.Codec, NS.Providers
-NS.Version = '0.4.0'
+NS.Version = '0.5.0'
 NS.Sections = {'bindings', 'macros', 'addons', 'cvars', 'actions'}
-NS.Labels = {bindings = 'Keybindings (both sets)', macros = 'Macros (merge / update)', addons = 'Addon saved variables', cvars = 'Game, camera & sound', actions = 'Action bars (120 slots)'}
+local L,T=NS.L,NS.Text
+NS.Labels = {bindings=L.SECTION_BINDINGS,macros=L.SECTION_MACROS,addons=L.SECTION_ADDONS,
+    cvars=L.SECTION_CVARS,actions=L.SECTION_ACTIONS}
 local function str(v, max) return type(v) == 'string' and #v <= max end
 local function safeText(v, max) return str(v,max) and not v:find('[%c|]') end
 local function integer(v, low, high) return type(v) == 'number' and v == math.floor(v) and v >= low and v <= high end
@@ -134,20 +136,20 @@ function NS.Import(text, name)
 end
 function NS.Export(profile) NS.Validate(profile); return C.Export(profile) end
 function NS.Summary(p)
-    local rows = {p.name, 'From '..p.source.character..' ('..p.source.class..')', 'Client '..p.source.build,
-        'Saved '..date('%Y-%m-%d %H:%M',p.created), ''}
+    local rows = {p.name,T('SUMMARY_FROM',p.source.character,p.source.class),T('SUMMARY_CLIENT',p.source.build),
+        T('SUMMARY_SAVED',date('%Y-%m-%d %H:%M',p.created)),''}
     local d = p.data
-    if d.bindings then rows[#rows+1] = 'Bindings: '..count(d.bindings.sets[1])..' account / '..count(d.bindings.sets[2])..' character keys' end
-    if d.macros then rows[#rows+1] = 'Macros: '..#d.macros..' (merge; unrelated macros stay)' end
+    if d.bindings then rows[#rows+1]=T('SUMMARY_BINDINGS',count(d.bindings.sets[1]),count(d.bindings.sets[2])) end
+    if d.macros then rows[#rows+1]=T('SUMMARY_MACROS',#d.macros) end
     if d.addons then
-        rows[#rows+1] = 'Addon data: '..count(d.addons)..' addons'
+        rows[#rows+1]=T('SUMMARY_ADDONS',count(d.addons))
         local names = {}; for name in pairs(d.addons) do names[#names+1] = name end; table.sort(names)
-        for _,name in ipairs(names) do rows[#rows+1] = '  '..name..' ('..count(d.addons[name].variables)..' variables)' end
+        for _,name in ipairs(names) do rows[#rows+1]=T('SUMMARY_ADDON_VARS',name,count(d.addons[name].variables)) end
     end
-    if d.cvars then rows[#rows+1] = 'Game settings: '..count(d.cvars)..' supported values' end
-    if d.actions then rows[#rows+1] = 'Action bars: '..count(d.actions)..' slots, including saved empty slots' end
+    if d.cvars then rows[#rows+1]=T('SUMMARY_CVARS',count(d.cvars)) end
+    if d.actions then rows[#rows+1]=T('SUMMARY_ACTIONS',count(d.actions)) end
     if type(p.warnings) == 'table' and #p.warnings > 0 then
-        rows[#rows+1] = ''; rows[#rows+1] = 'Capture notes:'
+        rows[#rows+1]='';rows[#rows+1]=L.CAPTURE_NOTES
         for _,warning in ipairs(p.warnings) do if type(warning) == 'string' then rows[#rows+1] = warning end end
     end
     return table.concat(rows,'\n')
@@ -192,50 +194,51 @@ function NS.Inspect(profile)
         end
         add(indent..'}')
     end
-    add('PROFILE');add('Name: '..profile.name)
-    add('Character: '..profile.source.character);add('Class: '..profile.source.class)
-    add('Client: '..profile.source.build);add('Saved: '..date('%Y-%m-%d %H:%M',profile.created))
+    add(L.INSPECT_PROFILE);add(T('INSPECT_NAME',profile.name))
+    add(T('INSPECT_CHARACTER',profile.source.character));add(T('INSPECT_CLASS',profile.source.class))
+    add(T('INSPECT_CLIENT',profile.source.build));add(T('INSPECT_SAVED',date('%Y-%m-%d %H:%M',profile.created)))
     local data=profile.data
     if data.bindings then
-        add('');add('KEYBINDINGS');add('Active set: '..(data.bindings.active==1 and 'Account' or 'Character'))
+        add('');add(L.INSPECT_BINDINGS);add(T('INSPECT_ACTIVE',data.bindings.active==1 and L.ACCOUNT or L.CHARACTER))
         for set=1,2 do
-            add((set==1 and 'Account' or 'Character')..' set:')
+            add(T('INSPECT_SET',set==1 and L.ACCOUNT or L.CHARACTER))
             for _,key in ipairs(inspectKeys(data.bindings.sets[set])) do
                 add('  '..inspectScalar(key)..' = '..inspectScalar(data.bindings.sets[set][key]))
             end
         end
     end
     if data.macros then
-        add('');add('MACROS')
+        add('');add(L.INSPECT_MACROS)
         for index,macro in ipairs(data.macros) do
-            add(string.format('%d. [%s] %s',index,macro.character and 'Character' or 'Account',inspectScalar(macro.name)))
-            add('   Icon: '..inspectScalar(macro.icon));add('   Body: '..inspectScalar(macro.body))
+            add(T('INSPECT_MACRO',index,macro.character and L.CHARACTER or L.ACCOUNT,inspectScalar(macro.name)))
+            add(T('INSPECT_ICON',inspectScalar(macro.icon)));add(T('INSPECT_BODY',inspectScalar(macro.body)))
         end
     end
     if data.addons then
-        add('');add('ADDON SETTINGS')
+        add('');add(L.INSPECT_ADDONS)
         for _,addon in ipairs(inspectKeys(data.addons)) do
             add(addon..':')
             for _,name in ipairs(inspectKeys(data.addons[addon].variables)) do
                 local entry=data.addons[addon].variables[name]
-                if entry.present then value(entry.value,'  ',name..' ['..entry.scope..'] = ')
-                else add('  '..name..' ['..entry.scope..'] = <not present>') end
+                local scope=entry.scope=='account' and L.ACCOUNT or L.CHARACTER
+                if entry.present then value(entry.value,'  ',T('INSPECT_SCOPE_VALUE',name,scope))
+                else add(T('INSPECT_ABSENT',name,scope)) end
             end
         end
     end
     if data.cvars then
-        add('');add('GAME SETTINGS')
+        add('');add(L.INSPECT_CVARS)
         for _,key in ipairs(inspectKeys(data.cvars)) do add('  '..key..' = '..inspectScalar(data.cvars[key])) end
     end
     if data.actions then
-        add('');add('ACTION BARS')
-        for _,slot in ipairs(inspectKeys(data.actions)) do value(data.actions[slot],'  ','Slot '..slot..' = ') end
+        add('');add(L.INSPECT_ACTIONS)
+        for _,slot in ipairs(inspectKeys(data.actions)) do value(data.actions[slot],'  ',T('INSPECT_SLOT',slot)) end
     end
     if profile.warnings and #profile.warnings>0 then
-        add('');add('CAPTURE NOTES')
+        add('');add(L.INSPECT_NOTES)
         for _,warning in ipairs(profile.warnings) do add('  '..warning) end
     end
-    if truncated then rows[#rows+1]='\n[Readable view truncated at 1 MiB. Export contains the complete exact profile.]' end
+    if truncated then rows[#rows+1]='\n'..L.INSPECT_TRUNCATED end
     return table.concat(rows,'\n')
 end
 function NS.Restore(profile, sections)

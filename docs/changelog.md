@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+- Add locale detection with a complete English fallback.
+- Translate the minimap tooltip, profile window, dialogs, summaries, selectable inspector, and primary status text into Simplified Chinese and Traditional Chinese.
+- Add localized addon-list title/notes while keeping profile section keys and export data language-neutral.
+
 ## 0.4.0
 
 - Add a selectable **Inspect saved data** view for keybindings, macros, addon variables, game settings, action bars, source metadata, and capture notes.

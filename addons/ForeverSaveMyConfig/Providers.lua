@@ -1,5 +1,6 @@
 local _, NS = ...
 local C = NS.Codec
+local L,T=NS.L,NS.Text
 local P = {}; NS.Providers = P
 NS.CVars = {
     'autoLootDefault', 'autoSelfCast', 'autoDismountFlying', 'autoClearAFK',
@@ -154,11 +155,11 @@ function P.cvars.restore(data, report)
 end
 P.addons = {}
 function NS.AddonCoverage()
-    local rows, known = {}, {}
+    local rows,known,unregistered={},{},{}
     for addon, variables in pairs(NS.Registry) do
         known[addon] = true
         local n = 0; for _ in pairs(variables) do n = n+1 end
-        rows[#rows+1] = addon..': '..(NS.Loaded(addon) and (n..' declared variables') or 'not loaded; skipped')
+        rows[#rows+1]=addon..': '..(NS.Loaded(addon) and T('COVERAGE_DECLARED',n) or L.COVERAGE_UNLOADED)
     end
     local count = C_AddOns and C_AddOns.GetNumAddOns or GetNumAddOns
     local info = C_AddOns and C_AddOns.GetAddOnInfo or GetAddOnInfo
@@ -166,11 +167,12 @@ function NS.AddonCoverage()
         for i = 1,count() do
             local name = info(i)
             if name ~= 'ForeverSaveMyConfig' and not known[name] and not name:match('^Blizzard_') then
-                rows[#rows+1] = name..': not registered; run registry scan'
+                rows[#rows+1]=name..': '..L.COVERAGE_UNREGISTERED
+                unregistered[#unregistered+1]=name
             end
         end
     end
-    table.sort(rows); return rows
+    table.sort(rows);table.sort(unregistered);return rows,unregistered
 end
 function P.addons.capture(_, report)
     local data = {}
@@ -185,9 +187,8 @@ function P.addons.capture(_, report)
             data[addon] = { variables = entries }
         else report[#report+1] = 'Skipped unloaded addon '..addon end
     end
-    for _,row in ipairs(NS.AddonCoverage()) do
-        if row:find('not registered',1,true) then report[#report+1] = row end
-    end
+    local _,unregistered=NS.AddonCoverage()
+    for _,name in ipairs(unregistered) do report[#report+1]=name..': '..L.COVERAGE_UNREGISTERED end
     return data
 end
 local function replace(target, source)
