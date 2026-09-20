@@ -20,8 +20,10 @@ Install using scripts/install.py, preserving unexpected files/edits. Never write
 live SavedVariables or restart the game. First addon discovery needs a user
 restart; updates use /reload. Keep build products and install manifests ignored.
 
-Deliver scoped changes to this repository's main branch and verify CI. Releases
-use ForeverSaveMyConfig-vX.Y.Z, never overwrite releases. Initial releases remain
+Deliver scoped changes to this repository's main branch and verify CI. Every main
+push releases its tested artifact, so each merge must carry a fresh semantic TOC
+version and exact-version changelog. Releases use ForeverSaveMyConfig-vX.Y.Z and
+never overwrite releases. Initial releases remain
 prereleases until live acceptance is complete. CurseForge project ID: 1704390
 (user supplied). GitHub variable CURSEFORGE_PUBLISH_ENABLED stays false during
 the publication hold.

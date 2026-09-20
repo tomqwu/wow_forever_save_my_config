@@ -29,7 +29,13 @@ An import never changes player settings. Restore uses only the explicitly select
 
 `tests/test_powershell.ps1` runs Windows backup/restore and registry integration tests using synthetic fixtures. It shadows the process query only inside the test so a running real game does not block fake-data tests; a separate test proves the production running-game guard rejects a WoW process. No real WTF file is read or changed.
 
-CI checks Linux tests and ZIP construction. Tags `ForeverSaveMyConfig-vX.Y.Z` must match the TOC. Release creation fails rather than overwriting an existing release. The initial release is marked as a prerelease until live acceptance is complete.
+CI checks Linux tests, Windows offline-tool tests, and ZIP construction. Every
+successful push to `main` creates `ForeverSaveMyConfig-vX.Y.Z` from the tested
+artifact and targets that exact commit. Pull-request CI rejects a TOC version
+whose tag already exists, so every merge must include a fresh semantic version
+and matching changelog entry. Release creation fails rather than overwriting an
+existing tag or release. Initial releases remain prereleases until live
+acceptance is complete.
 
 ## Live acceptance checklist (pending)
 
@@ -49,7 +55,7 @@ The repository secret `CURSE_FORGE` is consumed only inside GitHub Actions.
 Repository variable `CURSEFORGE_PROJECT_ID` is set to **1704390**, supplied by
 the owner. Hunter's Friend project 1700438 is explicitly rejected.
 `CURSEFORGE_PUBLISH_ENABLED=false` enforces the current publication hold.
-Both tag-triggered and manual uploads are disabled unless this variable is
+Both main-release and manual uploads are disabled unless this variable is
 explicitly set to `true`; manual dry runs remain available. Only enable publishing
 after the owner explicitly resumes it.
 
@@ -58,7 +64,7 @@ The manual workflow defaults to a dry run: it verifies the released ZIP, token,
 and exact game-version lookup without uploading. A dry run can run before the
 project ID is configured; it does not verify project-specific upload permission.
 Set `dry_run=false` only for a configured destination after publishing is enabled.
-Future tag releases call the publisher automatically after the GitHub release
+Future main releases call the publisher automatically after the GitHub release
 succeeds when `CURSEFORGE_PUBLISH_ENABLED=true`.
 
 Uploads use the official [CurseForge upload API](https://support.curseforge.com/support/solutions/articles/9000197321-curseforge-api)

@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing GitHub release tag (e.g. ForeverSaveMyConfig-v0.1.1)
+        description: Existing GitHub release tag (e.g. ForeverSaveMyConfig-v0.1.2)
         required: true
         type: string
       dry_run:

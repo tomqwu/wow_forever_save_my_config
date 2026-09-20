@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- Release every successful merge or direct push to `main` from the tested CI package.
+- Derive the release tag from the addon's TOC version and target the exact main commit.
+- Reject pull requests and main releases that reuse an existing version, preventing release replacement.
+- Keep CurseForge publishing behind the explicit publication-hold variable.
+
 ## 0.1.1
 
 - Restore changed macro icons even when the macro name and body already match.

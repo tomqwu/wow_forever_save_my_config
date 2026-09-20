@@ -3,12 +3,14 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import registry
 import package
 import install
+import release_guard
 
 
 class ToolsTests(unittest.TestCase):
@@ -65,6 +67,30 @@ class ToolsTests(unittest.TestCase):
         toc = (package.ADDON / 'ForeverSaveMyConfig.toc').read_text()
         profiles = (package.ADDON / 'Profiles.lua').read_text()
         self.assertEqual(re.search(r'## Version: (\S+)', toc)[1], re.search(r"NS.Version = '(.*?)'", profiles)[1])
+
+    def test_release_tag_comes_from_toc(self):
+        self.assertRegex(release_guard.release_tag(), r'^ForeverSaveMyConfig-v\d+\.\d+\.\d+$')
+
+    def test_release_guard_accepts_missing_tag(self):
+        result = mock.Mock(returncode=1, stdout='', stderr='gh: Not Found (HTTP 404)')
+        with mock.patch.object(release_guard.subprocess, 'run', return_value=result):
+            release_guard.assert_unreleased('owner/repository', 'ForeverSaveMyConfig-v9.9.9')
+
+    def test_release_guard_rejects_existing_tag(self):
+        result = mock.Mock(
+            returncode=0,
+            stdout='{"object":{"sha":"abc123"}}',
+            stderr='',
+        )
+        with mock.patch.object(release_guard.subprocess, 'run', return_value=result):
+            with self.assertRaisesRegex(ValueError, 'already exists at abc123'):
+                release_guard.assert_unreleased('owner/repository', 'ForeverSaveMyConfig-v9.9.9')
+
+    def test_release_guard_does_not_hide_api_failures(self):
+        result = mock.Mock(returncode=1, stdout='', stderr='gh: API rate limit exceeded')
+        with mock.patch.object(release_guard.subprocess, 'run', return_value=result):
+            with self.assertRaisesRegex(RuntimeError, 'Could not verify'):
+                release_guard.assert_unreleased('owner/repository', 'ForeverSaveMyConfig-v9.9.9')
 
 
 if __name__ == '__main__':
