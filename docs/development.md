@@ -6,7 +6,7 @@ Compatibility target: WoW Forever **1.60.1.69893**, Interface **16001**. Checked
 
 Relevant client source:
 
-- `Blizzard_Settings_Shared/Blizzard_Keybindings.lua`: `GetBinding` returns action, category, and keys.
+- `Blizzard_Settings_Shared/Blizzard_Keybindings.lua`: `GetBinding(index)` uses the single supported index argument and returns action, category, and keys.
 - `Blizzard_Settings_Shared/Blizzard_Settings.lua`: binding selection uses both `LoadBindings` and `SaveBindings`; the final saved set determines the persisted active selection.
 - `Blizzard_MacroUI/Blizzard_MacroUI.lua` and `Blizzard_MacroIconSelector.lua`: macro scope, indices, and creation.
 - `Blizzard_APIDocumentationGenerated/MacroConstantsDocumentation.lua`: `Constants.MacroConsts` has 120 account and 30 character slots. Runtime constants are preferred to fallbacks.
@@ -19,7 +19,7 @@ Runtime checks still handle missing APIs and report unsupported settings. Source
 
 ## Data flow
 
-`Registry.lua` defines trusted local addon-to-global mappings. `Codec.lua` encodes primitive data and plain tables using a bounded length-prefixed format, Base64, and Adler-32 calculated in 5552-byte blocks. The checksum detects accidental corruption, not the trustworthiness or authorship of the sender. `Providers.lua` reads, restores, and verifies each category against live values. `Profiles.lua` validates imports, owns the database, resolves the newest current-character profile as the startup default, and requires a recovery snapshot. `Locales.lua` provides English, Simplified Chinese, and Traditional Chinese text with English fallback. `UI.lua` provides the movable profile manager, selectable saved-data inspector, draggable minimap launcher, persisted layout preferences, and visible checksum status; `Core.lua` initializes storage and handles the slash commands and pending logout writes.
+`Registry.lua` defines trusted local addon-to-global mappings. `Codec.lua` encodes primitive data and plain tables using a bounded length-prefixed format, Base64, and Adler-32 calculated in 5552-byte blocks. The checksum detects accidental corruption, not the trustworthiness or authorship of the sender. `Providers.lua` reads, restores, and verifies each category against live values. `Profiles.lua` validates imports, owns the database, preserves successful sections when an optional capture API fails, resolves the newest current-character profile as the startup default, and requires a complete recovery snapshot before restore. `Locales.lua` provides English, Simplified Chinese, and Traditional Chinese text with English fallback. `UI.lua` provides the movable profile manager, selectable saved-data inspector, draggable minimap launcher, persisted layout preferences, and visible checksum status; `Core.lua` initializes storage and handles the slash commands and pending logout writes.
 
 An import never changes player settings. Restore uses only the explicitly selected sections and still requires registered, loaded addons. Generic addon restore mutates existing tables to preserve AceDB references; a final logout pass mitigates later in-session cache writes, but does not guarantee event ordering against another addon's logout handler.
 

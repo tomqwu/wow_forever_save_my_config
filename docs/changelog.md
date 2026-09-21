@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.1
+
+- Fixed live Forever profile creation by calling `GetBinding` with the supported single-argument signature.
+- A failure in one selected section now records a capture warning and preserves every other successfully captured section instead of discarding the entire profile.
+- Recovery snapshots remain strict: restoration is cancelled before mutation if any selected section cannot be backed up completely.
+- Reattach the live profile database during both `PLAYER_LOGOUT` and `ADDONS_UNLOADING` so reload and client shutdown use the current table.
+
+Open `/fconfig`, click **Save new**, and then `/reload`. The named profile should remain selected after reload; inspect Capture notes for any skipped section.
+
 ## 0.7.0
 
 - Validate selected profile data before restoration and identify unloaded addons or no-longer-registered variables before changing settings.

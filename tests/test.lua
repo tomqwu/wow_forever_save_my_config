@@ -27,7 +27,8 @@ local failBinding
 GetCurrentBindingSet = function() return active end
 GetNumBindings = function() return 4 end
 local commands = {'JUMP','MOVEFORWARD','SPELL Aimed Shot','CLICK TestButton:LeftButton'}
-GetBinding = function(i)
+GetBinding = function(i, ...)
+    assert(select('#', ...) == 0, 'Forever GetBinding accepts only the binding index.')
     local keys = {}; for key,command in pairs(live) do if command == commands[i] then keys[#keys+1] = key end end
     table.sort(keys)
     return commands[i], 'CATEGORY', unpack(keys)
@@ -139,6 +140,18 @@ test('save/import collision preserves old profile and import never applies setti
     assert(imported.name=='Profile (2)' and sum==verified and #imported.warnings>#saved.warnings)
     equal(NS.db.profiles.Profile,saved); equal(live,before)
     throws(function() NS.Save('Profile',all) end)
+end)
+test('save keeps supported sections when one client API is unavailable',function()
+    reset()
+    local getNumBindings = GetNumBindings
+    GetNumBindings = nil
+    local p = NS.Save('Partial',all)
+    assert(NS.db.profiles.Partial == p and not p.data.bindings)
+    assert(p.data.macros and p.data.addons and p.data.cvars and p.data.actions)
+    assert(table.concat(p.warnings,'\n'):find('Skipped Keybindings',1,true))
+    local ok,err=pcall(NS.Capture,'Recovery',{bindings=true},true)
+    assert(not ok and tostring(err):find('Cannot capture bindings',1,true))
+    GetNumBindings = getNumBindings
 end)
 test('newest profile from the current character becomes the default',function()
     reset();local originalTime=time
@@ -380,9 +393,11 @@ test('GUI smoke: save, select, export, import, coverage, review, cancel, recover
     click('All');for _,key in ipairs(NS.Sections) do assert(NS.db.ui.sections[key]==true) end
     click('Reset layout');assert(not next(NS.db.ui.positions) and NS.db.ui.minimapAngle==220)
 end)
-test('logout reapplies only staged addon values and does not modify profiles',function()
+test('unload keeps the profile database global and reapplies staged addon values',function()
     assert(NS.pendingAddons); ExampleDB.nested.scale=42
-    for _,w in ipairs(objects) do if w.scripts.OnEvent then w.scripts.OnEvent(w,'PLAYER_LOGOUT') end end
+    ForeverSaveMyConfigDB = nil
+    for _,w in ipairs(objects) do if w.scripts.OnEvent then w.scripts.OnEvent(w,'ADDONS_UNLOADING') end end
+    assert(ForeverSaveMyConfigDB == NS.db and NS.Count(ForeverSaveMyConfigDB.profiles) > 0)
     assert(ExampleDB.nested.scale==1.5)
 end)
 print(tests..' Lua tests passed (mocked client; no live-game validation).')

@@ -43,7 +43,7 @@ end
 local function currentBindings()
     local keys = {}
     for i = 1, api('GetNumBindings')() do
-        local values = { api('GetBinding')(i, true) }
+        local values = { api('GetBinding')(i) }
         local command = values[1]
         if command then
             for j = 3, #values do if values[j] and values[j] ~= '' then keys[values[j]] = command end end

@@ -10,6 +10,18 @@ end
 local events = CreateFrame('Frame')
 events:RegisterEvent('ADDON_LOADED')
 events:RegisterEvent('PLAYER_LOGOUT')
+events:RegisterEvent('ADDONS_UNLOADING')
+local function persistAndFinishRestore(event)
+    -- Keep the declared global attached to the live database until the client serializes it.
+    if NS.db then ForeverSaveMyConfigDB = NS.db end
+    if NS.pendingAddons then
+        -- Reapply immediately before serialization: some addons mutate caches after a restore.
+        -- Addons with later unload writers may still need an adapter or offline WTF restore.
+        local report = {}
+        local ok, err = pcall(NS.Providers.addons.restore, NS.pendingAddons, report)
+        if not ok and NS.db then NS.db.lastReport = (NS.db.lastReport or '')..'\n'..event..' restore failed: '..tostring(err) end
+    end
+end
 events:SetScript('OnEvent', function(_, event, name)
     if event == 'ADDON_LOADED' and name == addon then
         if ForeverSaveMyConfigDB == nil then ForeverSaveMyConfigDB = {} end
@@ -18,12 +30,8 @@ events:SetScript('OnEvent', function(_, event, name)
         NS.LoadDefaultProfile()
         NS.RefreshMinimap()
         NS.Say(T('LOADED',NS.Version))
-    elseif event == 'PLAYER_LOGOUT' and NS.pendingAddons then
-        -- Reapply immediately before serialization: some addons mutate caches after a restore.
-        -- Addons with later logout writers may still need an adapter or offline WTF restore.
-        local report = {}
-        local ok, err = pcall(NS.Providers.addons.restore, NS.pendingAddons, report)
-        if not ok and NS.db then NS.db.lastReport = (NS.db.lastReport or '')..'\nLogout restore failed: '..tostring(err) end
+    elseif event == 'PLAYER_LOGOUT' or event == 'ADDONS_UNLOADING' then
+        persistAndFinishRestore(event)
     end
 end)
 SLASH_FOREVERSAVEMYCONFIG1 = '/fconfig'

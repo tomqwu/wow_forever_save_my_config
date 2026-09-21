@@ -1,6 +1,6 @@
 local _, NS = ...
 local C, P = NS.Codec, NS.Providers
-NS.Version = '0.7.0'
+NS.Version = '0.7.1'
 NS.Sections = {'bindings', 'macros', 'addons', 'cvars', 'actions'}
 local L,T=NS.L,NS.Text
 NS.Labels = {bindings=L.SECTION_BINDINGS,macros=L.SECTION_MACROS,addons=L.SECTION_ADDONS,
@@ -87,7 +87,11 @@ function NS.Initialize(db)
     end
     NS.db = db
 end
-function NS.Capture(name, sections)
+local function cleanCaptureError(value)
+    value = tostring(value):gsub('[%c|]', ' ')
+    return value:sub(1, 380)
+end
+function NS.Capture(name, sections, requireAll)
     NS.OutOfCombat()
     local _, class = UnitClass('player')
     local version, build = GetBuildInfo()
@@ -98,10 +102,13 @@ function NS.Capture(name, sections)
     for _,key in ipairs(NS.Sections) do
         if sections[key] then
             local ok, result = pcall(P[key].capture, sections, profile.warnings)
-            assert(ok, 'Cannot capture '..key..': '..tostring(result))
-            profile.data[key] = result
+            if ok then profile.data[key] = result
+            elseif requireAll then error('Cannot capture '..key..': '..tostring(result), 0)
+            else profile.warnings[#profile.warnings+1] =
+                'Skipped '..NS.Labels[key]..': '..cleanCaptureError(result) end
         end
     end
+    assert(next(profile.data), 'None of the selected sections could be captured. Read the error shown in chat.')
     NS.Validate(profile)
     C.Pack(profile) -- Fail before changing the saved database if aggregate data exceeds limits.
     return profile
@@ -283,7 +290,7 @@ function NS.Restore(profile, sections)
     end
     if preCount==0 then report[#report+1]=L.PRECHECK_OK
     elseif preCount>preLines then report[#report+1]=T('PRECHECK_MORE',preCount-preLines) end
-    local backup = NS.Capture('Before restore', selected)
+    local backup = NS.Capture('Before restore', selected, true)
     -- Never overwrite addon data unless its current value was safely captured.
     if selected.addons then
         for addon,entry in pairs(profile.data.addons) do
