@@ -20,6 +20,13 @@ NS.Registry = {
     ["ForeverUtilities"] = {
         ["ForeverUtilitiesDB"] = "account",
     },
+    ["Questie"] = {
+        ["QuestieConfig"] = "account",
+        ["QuestieConfigCharacter"] = "character",
+        ["QuestieProfilerEnabled"] = "account",
+    },
+    ["QuestieDB"] = {
+    },
     ["Leatrix_Maps"] = {
         ["LeaMapsDB"] = "account",
     },

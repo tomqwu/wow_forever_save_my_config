@@ -2,7 +2,7 @@
 
 A standalone profile manager for **WoW Forever 1.60.x** (Interface **16001**), built using the compatibility and delivery workflow from [Forever - Hunter's Friend](https://github.com/tomqwu/wow_forever_hunters_friend).
 
-Open **`/fconfig`** or **`/fsmc`** to save named profiles, inspect their contents, restore selected sections, and copy/paste exports. Version **0.7.1** fixes live Forever profile capture and remains a preview pending full restore validation. It is tested with mocked client APIs and synthetic Windows backup data. Click the draggable minimap icon to open the GUI. Profile details and dialogs use selectable text fields; **Inspect** shows readable bindings, macros, addon variables, game settings, action slots, and capture notes. The branded profile window and import/export dialog are movable and remember their positions; **Reset layout** returns the windows and minimap icon to their defaults. Section choices are remembered between sessions. The GUI detects the WoW locale and includes English, Simplified Chinese, and Traditional Chinese; unsupported locales fall back to complete English text.
+Open **`/fconfig`** or **`/fsmc`** to save named profiles, inspect their contents, restore selected sections, and copy/paste exports. Version **0.7.2** targets the active Forever build and includes the live profile-capture fix. It remains a preview pending full restore validation and is tested with mocked client APIs and synthetic Windows backup data. Click the draggable minimap icon to open the GUI. Profile details and dialogs use selectable text fields; **Inspect** shows readable bindings, macros, addon variables, game settings, action slots, and capture notes. The branded profile window and import/export dialog are movable and remember their positions; **Reset layout** returns the windows and minimap icon to their defaults. Section choices are remembered between sessions. The GUI detects the WoW locale and includes English, Simplified Chinese, and Traditional Chinese; unsupported locales fall back to complete English text.
 
 ## What it saves
 
@@ -14,7 +14,7 @@ Open **`/fconfig`** or **`/fsmc`** to save named profiles, inspect their content
 | Game settings | Available values from a defined list of common UI, nameplate, camera, auto-loot, chat display, and sound CVars | Applies supported values; reports missing or rejected settings |
 | Action bars | 120 standard slots containing spells, items, macros, or no action | Resolves macros by name/body/scope; clears saved empty slots; reports unsupported/unavailable actions |
 
-The bundled registry includes Auctionator, Baganator, Hunter's Friend, Leatrix Maps, Leatrix Plus, SilverDragon, and Syndicator, plus SilverDragon components without separate saved variables. Registry entries contain TOC declarations only, never a player's settings. Addon data can include caches, histories, and profiles for other characters; there is no universal API that separates settings from the rest of an addon's database.
+The bundled registry includes Auctionator, Baganator, Hunter's Friend, Leatrix Maps, Leatrix Plus, Questie, SilverDragon, and Syndicator, plus components without separate saved variables. Registry entries contain TOC declarations only, never a player's settings. Addon data can include caches, histories, and profiles for other characters; there is no universal API that separates settings from the rest of an addon's database.
 
 ## First use
 

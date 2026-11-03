@@ -19,6 +19,9 @@ tests/test_powershell.ps1. Distinguish mocks from live client testing.
 Install using scripts/install.py, preserving unexpected files/edits. Never write
 live SavedVariables or restart the game. First addon discovery needs a user
 restart; updates use /reload. Keep build products and install manifests ignored.
+As of 2026-11-03 the active `wowf` client is `_forever_`; `_classic_beta_` is a
+historical install. Confirm the active product before every install and never
+report completion when only the historical beta folder was updated.
 
 Deliver scoped changes to this repository's main branch and verify CI. Every main
 push releases its tested artifact, so each merge must carry a fresh semantic TOC

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.2
+
+- Verified the runtime API against Forever **1.60.1.70707**, Interface **16001**, exported UI source commit `aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16`.
+- Add Questie's current account and character saved-variable declarations while retaining the existing supported-addon registry.
+- Record `_forever_` as the active product folder and `_classic_beta_` as historical so future installs reach the running client.
+
 ## 0.7.1
 
 - Fixed live Forever profile creation by calling `GetBinding` with the supported single-argument signature.

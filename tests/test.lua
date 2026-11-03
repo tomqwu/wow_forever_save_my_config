@@ -9,7 +9,7 @@ end
 local function throws(fn) assert(not pcall(fn), 'Expected rejection') end
 local function equal(a,b) assert(NS.Codec.Pack(a) == NS.Codec.Pack(b), 'Values differ') end
 GetLocale=function() return 'enUS' end
-load('Locales');load('Registry');load('Codec')
+load('Locales');load('Registry');local bundledRegistry=NS.Registry;load('Codec')
 local C = NS.Codec
 local constants = {MAX_ACCOUNT_MACROS = 120, MAX_CHARACTER_MACROS = 30}
 Constants = {MacroConsts = constants}
@@ -79,6 +79,12 @@ local function reset()
     NS.pendingAddons=nil; NS.Initialize({})
 end
 reset()
+test('bundled registry includes the active Forever addons',function()
+    assert(bundledRegistry.ForeverUtilities.ForeverUtilitiesDB=='account')
+    assert(bundledRegistry.Questie.QuestieConfig=='account')
+    assert(bundledRegistry.Questie.QuestieConfigCharacter=='character')
+    assert(bundledRegistry.Questie.QuestieProfilerEnabled=='account')
+end)
 test('locale tables translate Chinese and fall back completely to English',function()
     assert(NS.Locale=='enUS' and NS.L.EXPORT=='Export')
     assert(NS.Text('UNKNOWN_LOCALE_KEY')=='UNKNOWN_LOCALE_KEY')

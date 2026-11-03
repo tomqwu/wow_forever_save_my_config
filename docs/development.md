@@ -2,7 +2,7 @@
 
 ## API reference
 
-Compatibility target: WoW Forever **1.60.1.69893**, Interface **16001**. Checked against Blizzard's exported UI source in the [Gethe mirror, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever), local revision `4d5d706b8e01c5ebe01c8dd9b7a07151d8d37069`.
+Compatibility target: WoW Forever **1.60.1.70707**, Interface **16001**. Checked on 2026-11-03 against Blizzard's exported UI source in the [Gethe mirror, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever), revision `aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16`.
 
 Relevant client source:
 
@@ -44,7 +44,7 @@ acceptance is complete.
 3. Back up the full WTF folder with WoW closed before deliberately changing real settings. Keep that archive outside the addon folder.
 4. Change a known key and verify binding restore in both account and character mode, including multiple keys for one action. Check that the original active scope persists through reload.
 5. Test unique macro updates and creation in each scope. Check full macro capacity, duplicate names, non-ASCII bodies, and action slots referring to macros after IDs reorder.
-6. Change one registered setting in Hunter's Friend and Leatrix. Restore addon data, reload, and check both the UI and persistence across a second reload. Exercise load-on-demand addon coverage. Do not claim universal compatibility from these samples.
+6. Change one registered setting in Classmate and Questie. Restore addon data, reload, and check both the UI and persistence across a second reload. Exercise load-on-demand addon coverage. Do not claim universal compatibility from these samples.
 7. Test known spell/item/macro slots, saved empty slots, and unavailable spells on a different character. Check cursor preservation and protected-action errors.
 8. Enter combat and verify saves/restores are blocked before mutation. Leave combat and test recovery and restore error reporting.
 9. Test the full offline backup and restore on a disposable copy of a client directory, not the only copy of real settings.
