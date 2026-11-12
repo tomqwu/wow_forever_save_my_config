@@ -2,7 +2,7 @@
 
 ## API reference
 
-Compatibility target: WoW Forever **1.60.1.70707**, Interface **16001**. Checked on 2026-11-03 against Blizzard's exported UI source in the [Gethe mirror, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever), revision `aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16`.
+Compatibility target: WoW Forever **1.60.1.70888**, Interface **16001**. Checked on 2026-11-12 against Blizzard's exported UI source in the [Gethe mirror, forever branch](https://github.com/Gethe/wow-ui-source/tree/forever), revision `4cd0ab752a77164f654ccbca9d0c1fe8dafceebe`. Builds 70755–70888 changed no API, constant, template, or keybinding behavior this addon uses.
 
 Relevant client source:
 

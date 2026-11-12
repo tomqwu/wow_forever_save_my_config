@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.3
+
+- Re-verified the runtime API against Forever **1.60.1.70888**, Interface **16001**, exported UI source commit `4cd0ab752a77164f654ccbca9d0c1fe8dafceebe`. No addon code changes were required: binding, macro, action-bar, cursor, addon-enumeration, and CVar APIs, `Constants.MacroConsts` (120/30), and the UI templates used are unchanged.
+- Updated the documented compatibility baseline from 1.60.1.70707.
+
 ## 0.7.2
 
 - Verified the runtime API against Forever **1.60.1.70707**, Interface **16001**, exported UI source commit `aff0d8cd53bf4d9ef1c1dd2786b94461a276fb16`.

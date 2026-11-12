@@ -1,6 +1,6 @@
 local _, NS = ...
 local C, P = NS.Codec, NS.Providers
-NS.Version = '0.7.2'
+NS.Version = '0.7.3'
 NS.Sections = {'bindings', 'macros', 'addons', 'cvars', 'actions'}
 local L,T=NS.L,NS.Text
 NS.Labels = {bindings=L.SECTION_BINDINGS,macros=L.SECTION_MACROS,addons=L.SECTION_ADDONS,
