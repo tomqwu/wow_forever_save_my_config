@@ -9,7 +9,7 @@ end
 local function throws(fn) assert(not pcall(fn), 'Expected rejection') end
 local function equal(a,b) assert(NS.Codec.Pack(a) == NS.Codec.Pack(b), 'Values differ') end
 GetLocale=function() return 'enUS' end
-load('Locales');load('Registry');local bundledRegistry=NS.Registry;load('Codec')
+load('Locales');load('Registry');local bundledRegistry=NS.Registry;load('Caches');load('Codec')
 local C = NS.Codec
 local constants = {MAX_ACCOUNT_MACROS = 120, MAX_CHARACTER_MACROS = 30}
 Constants = {MacroConsts = constants}
@@ -48,7 +48,10 @@ CreateMacro = function(name,icon,body,character)
     local start,stop = character and 121 or 1,character and 150 or 120
     for i=start,stop do if not macros[i] then macros[i] = {name=name,icon=icon,body=body}; return i end end
 end
-EditMacro = function(index,name,icon,body) macros[index] = {name=name,icon=icon,body=body}; return index end
+-- Like the client, nil arguments keep the macro's current name, icon or body.
+local editCalls=0
+EditMacro = function(index,name,icon,body) local m=macros[index] or {}; editCalls=editCalls+1
+    macros[index] = {name=name or m.name,icon=icon or m.icon,body=body or m.body}; return index end
 local cvars = {autoLootDefault='1',Sound_MasterVolume='0.5'}
 GetCVar = function(key) return cvars[key] end
 SetCVar = function(key,value) cvars[key] = value; return true end
@@ -156,7 +159,7 @@ test('save keeps supported sections when one client API is unavailable',function
     assert(p.data.macros and p.data.addons and p.data.cvars and p.data.actions)
     assert(table.concat(p.warnings,'\n'):find('Skipped Keybindings',1,true))
     local ok,err=pcall(NS.Capture,'Recovery',{bindings=true},true)
-    assert(not ok and tostring(err):find('Cannot capture bindings',1,true))
+    assert(not ok and tostring(err):find('Cannot capture Keybindings',1,true))
     GetNumBindings = getNumBindings
 end)
 test('newest profile from the current character becomes the default',function()
@@ -193,8 +196,8 @@ test('restore creates independent recovery, replaces bindings, keeps active set'
     live.K='JUMP'; SaveBindings(1); sets[2]={Y='MOVEFORWARD'}
     NS.Restore(p,{bindings=true})
     equal(sets,p.data.bindings.sets); assert(active==p.data.bindings.active)
-    assert(NS.db.recovery.data.bindings.sets[1].K=='JUMP' and NS.db.lastReport:find('Post-load validation passed',1,true))
-    live.SPACE=nil; assert(NS.db.recovery.data.bindings.sets[1].SPACE=='JUMP')
+    assert(NS.LatestRecovery().data.bindings.sets[1].K=='JUMP' and NS.db.lastReport:find('Post-load validation passed',1,true))
+    live.SPACE=nil; assert(NS.LatestRecovery().data.bindings.sets[1].SPACE=='JUMP')
 end)
 test('restore reports unloaded addons before and after processing',function()
     reset();local p=NS.Capture('Test',all);loadedAddons.Example=false
@@ -214,18 +217,18 @@ test('post-load validation detects a setting the client did not apply',function(
     local original=SetCVar
     SetCVar=function(key,value) if key=='autoLootDefault' then return true end return original(key,value) end
     local report=NS.Restore(p,{cvars=true});SetCVar=original
-    assert(report:find('Game setting autoLootDefault expected 1 but is 0.',1,true))
+    assert(report:find('Game setting autoLootDefault: profile 1, current 0.',1,true))
 end)
 test('binding API failure rolls back both sets and stops subsequent sections',function()
     reset(); local p=NS.Capture('Test',all); live.K='JUMP'; live.W='JUMP'; SaveBindings(1)
     local old=copy(sets); failBinding='MOVEFORWARD'
     local report=NS.Restore(p,{bindings=true,cvars=true})
-    equal(sets,old); assert(report:find('Original bindings recovered',1,true))
+    equal(sets,old); assert(report:find('Keybindings (both sets) rolled back',1,true))
 end)
 test('combat prevents saves and restores before mutation',function()
     reset(); local p=NS.Capture('Test',all); combat=true
     throws(function() NS.Save('No',all) end); throws(function() NS.Restore(p,all) end)
-    assert(not NS.db.recovery and next(NS.db.profiles)==nil); combat=false
+    assert(not NS.LatestRecovery() and next(NS.db.profiles)==nil); combat=false
 end)
 test('addon restore retains nested references and false/nil, blocks arbitrary globals',function()
     reset(); local p=NS.Capture('Test',all); local nested=ExampleDB.nested
@@ -234,13 +237,13 @@ test('addon restore retains nested references and false/nil, blocks arbitrary gl
     local report=NS.Restore(p,{addons=true})
     assert(ExampleDB.nested==nested and nested.scale==1.5 and ExampleDB.extra==nil and ExampleChar==false)
     assert(Unregistered==nil and report:find('Skipped unregistered variable',1,true))
-    assert(NS.db.recovery.data.addons.Example.variables.ExampleDB.value.nested.scale==99)
+    assert(NS.LatestRecovery().data.addons.Example.variables.ExampleDB.value.nested.scale==99)
     throws(function() NS.Restore(p,{addons=true}) end)
 end)
 test('unserializable addon variable is reported; unsafe recovery aborts restore',function()
     reset(); local p=NS.Capture('Test',all); ExampleDB.fn=function() end
     local captured=NS.Capture('Partial',{addons=true}); assert(not captured.data.addons.Example.variables.ExampleDB)
-    throws(function() NS.Restore(p,{addons=true}) end); assert(not NS.db.recovery)
+    throws(function() NS.Restore(p,{addons=true}) end); assert(not NS.LatestRecovery())
 end)
 test('macro merge scopes, unrelated preservation and ambiguous names',function()
     reset(); local p=NS.Capture('Test',all)
@@ -277,7 +280,7 @@ test('action placement rejection is reported even if the previous slot has the s
 end)
 test('restore requires empty cursor and at least one selected section',function()
     reset(); local p=NS.Capture('Test',all); cursor={kind='item',id=4}
-    throws(function() NS.Restore(p,{actions=true}) end); assert(cursor.id==4 and not NS.db.recovery)
+    throws(function() NS.Restore(p,{actions=true}) end); assert(cursor.id==4 and not NS.LatestRecovery())
     cursor=nil; throws(function() NS.Restore(p,{}) end)
 end)
 test('profile limit, names and future database version reject safely',function()
@@ -294,11 +297,91 @@ test('UI preferences migrate safely and preserve explicit section choices',funct
     assert(type(db.ui.positions)=='table' and db.ui.minimapAngle==5)
     db.ui.minimapAngle='broken';NS.Initialize(db);assert(db.ui.minimapAngle==220)
 end)
+test('addon caches are skipped on save and restore unless the player opts in',function()
+    reset(); NS.Registry.Example.ExampleCache='account'; NS.Caches.Example={ExampleCache=true}
+    ExampleCache={prices={1,2,3}}
+    local p=NS.Capture('NoCache',{addons=true})
+    assert(p.data.addons.Example.variables.ExampleDB and not p.data.addons.Example.variables.ExampleCache)
+    assert(table.concat(p.warnings,'\n'):find('1 cache variable(s) not saved',1,true))
+    NS.db.ui.addonCaches=true
+    local withCache=NS.Capture('WithCache',{addons=true})
+    assert(withCache.data.addons.Example.variables.ExampleCache.value.prices[3]==3)
+    NS.db.ui.addonCaches=false; ExampleCache={prices={9}}
+    local report=NS.Restore(withCache,{addons=true})
+    assert(ExampleCache.prices[1]==9 and report:find('Pre-load: Example / ExampleCache is an addon cache',1,true))
+    assert(report:find('Kept current cache Example / ExampleCache',1,true) and report:find('Post-load validation passed',1,true))
+    assert(not NS.LatestRecovery().data.addons.Example.variables.ExampleCache)
+    NS.pendingAddons=nil; NS.db.ui.addonCaches=true
+    NS.Restore(withCache,{addons=true}); assert(ExampleCache.prices[3]==3)
+    assert(table.concat(NS.AddonCoverage(),'\n'):find('Example: 3 declared variables (1 cache variables included)',1,true))
+    NS.Caches.Example=nil; ExampleCache=nil
+end)
+test('recovery keeps five snapshots and never evicts the one being restored',function()
+    reset(); local p=NS.Capture('Test',{cvars=true})
+    for i=1,6 do cvars.autoLootDefault=tostring(i); NS.Restore(p,{cvars=true}) end
+    assert(#NS.db.recoveries==5 and NS.db.recoveries[1].recovery and NS.db.recoveries[1].data.cvars.autoLootDefault=='6')
+    local oldest=NS.db.recoveries[5]; NS.Restore(oldest,{cvars=true})
+    assert(#NS.db.recoveries==5 and NS.db.recoveries[5]==oldest and cvars.autoLootDefault==oldest.data.cvars.autoLootDefault)
+    local db={recovery=NS.Capture('Legacy',{cvars=true})}; NS.Initialize(db)
+    assert(db.recovery==nil and db.recoveries[1].name=='Legacy')
+end)
+test('a failed section rolls back every section already changed',function()
+    reset(); local p=NS.Capture('Test',all)
+    macros[1].body='/changed'; live.K='JUMP'; SaveBindings(1)
+    local oldSets,oldMacro=copy(sets),macros[1].body
+    local set=SetCVar; SetCVar=nil
+    local report=NS.Restore(p,{macros=true,bindings=true,cvars=true}); SetCVar=set
+    assert(report:find('FAILED Game, camera & sound',1,true))
+    assert(report:find('Macros (merge / update) rolled back',1,true) and report:find('Keybindings (both sets) rolled back',1,true))
+    equal(sets,oldSets); assert(macros[1].body==oldMacro and report:find('validation skipped',1,true))
+end)
+test('direct key bindings are captured and only cleared by profiles that captured them',function()
+    reset(); live.Q='MACRO Burst'; SaveBindings(1)
+    GetBindingAction=function(key) return live[key] end
+    local p=NS.Capture('Direct',{bindings=true})
+    assert(p.data.bindings.direct and p.data.bindings.sets[1].Q=='MACRO Burst')
+    local legacy=copy(p); legacy.data.bindings.direct=nil; legacy.data.bindings.sets[1].Q=nil
+    NS.Restore(legacy,{bindings=true}); assert(sets[1].Q=='MACRO Burst')
+    local without=copy(p); without.data.bindings.sets[1].Q=nil
+    NS.Restore(without,{bindings=true}); assert(sets[1].Q==nil)
+    GetBindingAction=nil
+end)
+test('binding contexts are captured separately and restored with their context',function()
+    reset(); local calls={}
+    C_KeyBindings={GetBindingContextForAction=function(command) return command=='MOVEFORWARD' and 3 or 0 end}
+    local set=SetBinding
+    SetBinding=function(key,command,ctx) if ctx then calls[#calls+1]=key..'@'..ctx end; return set(key,command) end
+    local p=NS.Capture('Contexts',{bindings=true})
+    assert(p.data.bindings.contexts[1][3].W=='MOVEFORWARD' and p.data.bindings.sets[1].W==nil)
+    NS.Validate(p); live.W=nil; SaveBindings(1)
+    NS.Restore(p,{bindings=true})
+    assert(sets[1].W=='MOVEFORWARD' and table.concat(calls,','):find('W@3',1,true))
+    local bad=copy(p); bad.data.bindings.contexts[1][99]={W='X'}; throws(function() NS.Validate(bad) end)
+    C_KeyBindings=nil; SetBinding=set
+end)
+test('dynamic #showtooltip macros keep their live icon and are created with the question mark',function()
+    reset(); macros[2]={name='Tip',icon=555,body='#showtooltip\n/cast Aimed Shot'}
+    local p=NS.Capture('Dynamic',{macros=true})
+    macros[2].icon=777; editCalls=0
+    local report=NS.Restore(p,{macros=true})
+    assert(macros[2].icon==777 and editCalls==0 and report:find('Post-load validation passed',1,true))
+    macros[2]=nil; NS.Restore(p,{macros=true})
+    local found; for _,m in pairs(macros) do if m.name=='Tip' then found=m end end
+    assert(found and found.icon==134400)
+end)
+test('preview lists differences without changing anything',function()
+    reset(); cvars.autoLootDefault='1'; local p=NS.Capture('Test',all); cvars.autoLootDefault='0'; macros[1].body='/other'
+    local before=copy(cvars); local text=NS.PreviewText(p,all)
+    assert(text:find('item(s) will change',1,true) and text:find('autoLootDefault: profile 1, current 0',1,true))
+    equal(cvars,before); assert(macros[1].body=='/other' and not NS.LatestRecovery())
+    cvars.autoLootDefault='1'; macros[1].body='/petattack'
+    assert(NS.PreviewText(p,{cvars=true,macros=true}):find('Nothing differs',1,true))
+end)
 -- Exercise frame construction, callbacks, slash commands and logout without a real renderer.
 local objects={}
 local methods={}
 local noop=function() end
-for name in ('SetFontObject SetAutoFocus SetMultiLine SetTextInsets SetMaxLetters SetJustifyH SetWidth SetHeight SetJustifyV ClearFocus SetFocus HighlightText SetFrameStrata SetClampedToScreen EnableMouse SetMovable RegisterForDrag StopMovingOrSizing StartMoving SetColorTexture SetAllPoints SetScale SetScrollChild SetVerticalScroll SetFrameLevel RegisterEvent UpdateScrollChildRect SetTexCoord AddMaskTexture'):gmatch('%S+') do methods[name]=noop end
+for name in ('SetNormalFontObject SetHighlightFontObject SetPushedTextOffset SetVertexColor SetAlpha SetTextColor SetWordWrap SetFontObject SetAutoFocus SetMultiLine SetTextInsets SetMaxLetters SetJustifyH SetWidth SetHeight SetJustifyV ClearFocus SetFocus HighlightText SetFrameStrata SetClampedToScreen EnableMouse SetMovable RegisterForDrag StopMovingOrSizing StartMoving SetColorTexture SetAllPoints SetScale SetScrollChild SetVerticalScroll SetFrameLevel RegisterEvent UpdateScrollChildRect SetTexCoord AddMaskTexture'):gmatch('%S+') do methods[name]=noop end
 local function widget(kind)
     local w=setmetatable({kind=kind,scripts={},shown=true,width=960,height=684,content=''}, {__index=methods})
     objects[#objects+1]=w; return w
@@ -372,16 +455,22 @@ test('GUI smoke: save, select, export, import, coverage, review, cancel, recover
     local iconFound=false
     for _,w in ipairs(objects) do if w.texture and w.texture:find('SaveMyConfig',1,true) then iconFound=true end end
     assert(iconFound and NS.db.ui.sections.bindings and NS.db.ui.positions.main==nil)
+    local crestFound=false
+    for _,w in ipairs(objects) do if w.texture and w.texture:find('Crests\\HUNTER',1,true) then crestFound=true end end
+    assert(crestFound,'header and rows show the class crest')
     ForeverConfigWindow:ClearAllPoints();ForeverConfigWindow:SetPoint('TOPLEFT',UIParent,'TOPLEFT',123,-45)
     ForeverConfigWindow.scripts.OnDragStop(ForeverConfigWindow)
     assert(NS.db.ui.positions.main.x==123 and NS.db.ui.positions.main.y==-45)
     click('Save new'); assert(NS.Count(NS.db.profiles)==2)
     click('Export'); assert(ForeverConfigDialog.shown);click('Close')
     click('Addon coverage');click('Close')
-    click('Review restore'); assert(ForeverConfigDialog.shown);click('Apply selected');assert(NS.db.recovery)
+    click('Review restore'); assert(ForeverConfigDialog.shown)
+    assert(ForeverConfigDialog.box:GetText():find('PREVIEW',1,true))
+    click('Apply selected');assert(NS.LatestRecovery())
     local chat=table.concat(chatMessages,'\n')
     assert(chat:find('Restore validation report:',1,true) and chat:find('Post-load validation passed',1,true))
-    click('Last restore report');click('Close'); click('Recovery snapshot')
+    click('Last restore report');click('Close'); click('Snapshots')
+    assert(ForeverConfigWindow.detailName:GetText():find('Before restoring',1,true))
     click('Inspect');assert(ForeverConfigDialog.content=='')
     assert(ForeverConfigDialog.shown and ForeverConfigDialog.title.content=='Inspect saved data')
     assert(ForeverConfigDialog.box:GetText():find('KEYBINDINGS',1,true));click('Close')
@@ -405,5 +494,24 @@ test('unload keeps the profile database global and reapplies staged addon values
     for _,w in ipairs(objects) do if w.scripts.OnEvent then w.scripts.OnEvent(w,'ADDONS_UNLOADING') end end
     assert(ForeverSaveMyConfigDB == NS.db and NS.Count(ForeverSaveMyConfigDB.profiles) > 0)
     assert(ExampleDB.nested.scale==1.5)
+end)
+test('staged addon data is re-applied when the addon loads after a reload',function()
+    reset(); local p=NS.Capture('Test',{addons=true}); ExampleDB.nested.scale=7
+    NS.Restore(p,{addons=true}); assert(NS.db.staged and NS.db.staged.addons.Example)
+    ExampleDB.nested.scale=8
+    local handler; for _,w in ipairs(objects) do if w.scripts.OnEvent then handler=w end end
+    handler.scripts.OnEvent(handler,'ADDON_LOADED','Example')
+    assert(ExampleDB.nested.scale==1.5 and NS.db.lastReport:find('re-applied to Example',1,true))
+    NS.db.staged.addons.Late={variables={}}
+    handler.scripts.OnEvent(handler,'PLAYER_LOGIN')
+    assert(NS.db.staged==nil and NS.db.lastReport:find('Late loaded before Save My Config',1,true))
+end)
+test('minimap button can be hidden from the window, slash command, and addon menu',function()
+    SlashCmdList.FOREVERSAVEMYCONFIG('minimap')
+    assert(NS.db.ui.minimapHidden and not ForeverSaveMyConfigMinimap.shown)
+    SlashCmdList.FOREVERSAVEMYCONFIG('minimap')
+    assert(not NS.db.ui.minimapHidden and ForeverSaveMyConfigMinimap.shown)
+    ForeverConfigWindow:Hide(); ForeverSaveMyConfig_OnCompartmentClick(); assert(ForeverConfigWindow.shown)
+    ForeverSaveMyConfig_OnCompartmentClick(); assert(not ForeverConfigWindow.shown)
 end)
 print(tests..' Lua tests passed (mocked client; no live-game validation).')

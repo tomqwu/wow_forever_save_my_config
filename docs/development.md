@@ -6,22 +6,24 @@ Compatibility target: WoW Forever **1.60.1.70888**, Interface **16001**. Checked
 
 Relevant client source:
 
-- `Blizzard_Settings_Shared/Blizzard_Keybindings.lua`: `GetBinding(index)` uses the single supported index argument and returns action, category, and keys.
+- `Blizzard_Settings_Shared/Blizzard_Keybindings.lua`: `GetBinding(index)` uses the single supported index argument and returns action, category, and keys. The same file binds with `SetBinding(key, action, bindingContext)` using `C_KeyBindings.GetBindingContextForAction`; Forever loads `Blizzard_Gamepad` bindings declared with `bindingContext="GamepadModeInGameCore"`. `GetBindingAction(key)` reads keys bound to SPELL/MACRO/ITEM/CLICK actions, which the command list does not include.
 - `Blizzard_Settings_Shared/Blizzard_Settings.lua`: binding selection uses both `LoadBindings` and `SaveBindings`; the final saved set determines the persisted active selection.
-- `Blizzard_MacroUI/Blizzard_MacroUI.lua` and `Blizzard_MacroIconSelector.lua`: macro scope, indices, and creation.
+- `Blizzard_MacroUI/Blizzard_MacroUI.lua` and `Blizzard_MacroIconSelector.lua`: macro scope, indices, and creation. The macro window saves a body with `EditMacro(index, nil, nil, body)`, keeping the stored icon; restore does the same for `#show` macros.
 - `Blizzard_APIDocumentationGenerated/MacroConstantsDocumentation.lua`: `Constants.MacroConsts` has 120 account and 30 character slots. Runtime constants are preferred to fallbacks.
 - `Blizzard_APIDocumentationGenerated/SpellDocumentation.lua`: `C_Spell.PickupSpell`.
 - `Blizzard_ActionBar/Shared/ActionButton.lua`: action cursor and placement APIs.
 - `Blizzard_APIDocumentationGenerated/AddOnsDocumentation.lua`: addon enumeration and loaded status.
+- `Blizzard_SettingsDefinitions_Frame` (files loaded for the camelot game type): the CVar names behind Forever's Settings menu, used for the game-settings list.
+- `Blizzard_Minimap/Camelot/AddonCompartment.xml`: Forever has the addon compartment, which reads `AddonCompartmentFunc` from the TOC.
 - Installed Interface 16001 TOCs: saved-variable names and scopes. No player saved values were read during development.
 
 Runtime checks still handle missing APIs and report unsupported settings. Source compatibility is not equivalent to live-game validation.
 
 ## Data flow
 
-`Registry.lua` defines trusted local addon-to-global mappings. `Codec.lua` encodes primitive data and plain tables using a bounded length-prefixed format, Base64, and Adler-32 calculated in 5552-byte blocks. The checksum detects accidental corruption, not the trustworthiness or authorship of the sender. `Providers.lua` reads, restores, and verifies each category against live values. `Profiles.lua` validates imports, owns the database, preserves successful sections when an optional capture API fails, resolves the newest current-character profile as the startup default, and requires a complete recovery snapshot before restore. `Locales.lua` provides English, Simplified Chinese, and Traditional Chinese text with English fallback. `UI.lua` provides the movable profile manager, selectable saved-data inspector, draggable minimap launcher, persisted layout preferences, and visible checksum status; `Core.lua` initializes storage and handles the slash commands and pending logout writes.
+`Registry.lua` defines trusted local addon-to-global mappings. `Caches.lua` is hand-maintained (so the scanners never overwrite it) and marks cache variables that are skipped unless the player opts in. `Codec.lua` encodes primitive data and plain tables using a bounded length-prefixed format, Base64, and Adler-32 calculated in 5552-byte blocks. The checksum detects accidental corruption, not the trustworthiness or authorship of the sender. `Providers.lua` reads, restores, and verifies each category against live values. `Profiles.lua` validates imports, owns the database, preserves successful sections when an optional capture API fails, resolves the newest current-character profile as the startup default, and requires a complete recovery snapshot before restore. Up to five snapshots are kept in `recoveries`; a failed section rolls back every attempted section from the snapshot. `NS.Preview` runs the post-restore comparisons as a dry run for **Review restore**. `Locales.lua` provides English, Simplified Chinese, and Traditional Chinese text with English fallback. `UI.lua` provides the movable profile manager, selectable saved-data inspector, draggable minimap launcher, persisted layout preferences, and visible checksum status; `Core.lua` initializes storage and handles the slash commands and pending logout writes.
 
-An import never changes player settings. Restore uses only the explicitly selected sections and still requires registered, loaded addons. Generic addon restore mutates existing tables to preserve AceDB references; a final logout pass mitigates later in-session cache writes, but does not guarantee event ordering against another addon's logout handler.
+An import never changes player settings. Restore uses only the explicitly selected sections and still requires registered, loaded addons. Generic addon restore mutates existing tables to preserve AceDB references; a final logout pass mitigates later in-session cache writes, but does not guarantee event ordering against another addon's logout handler. The restored values are also saved in `staged` and written again on each addon's `ADDON_LOADED` after the reload. This relies on frames receiving events in registration order, so it reaches only addons that load after Save My Config; `PLAYER_LOGIN` reports the rest and clears the staged data. Staged data is dropped if a different character logs in.
 
 ## Validation
 
@@ -44,10 +46,12 @@ acceptance is complete.
 3. Back up the full WTF folder with WoW closed before deliberately changing real settings. Keep that archive outside the addon folder.
 4. Change a known key and verify binding restore in both account and character mode, including multiple keys for one action. Check that the original active scope persists through reload.
 5. Test unique macro updates and creation in each scope. Check full macro capacity, duplicate names, non-ASCII bodies, and action slots referring to macros after IDs reorder.
-6. Change one registered setting in Classmate and Questie. Restore addon data, reload, and check both the UI and persistence across a second reload. Exercise load-on-demand addon coverage. Do not claim universal compatibility from these samples.
-7. Test known spell/item/macro slots, saved empty slots, and unavailable spells on a different character. Check cursor preservation and protected-action errors.
-8. Enter combat and verify saves/restores are blocked before mutation. Leave combat and test recovery and restore error reporting.
-9. Test the full offline backup and restore on a disposable copy of a client directory, not the only copy of real settings.
+6. Confirm direct (SPELL/MACRO/CLICK) bindings and gamepad-mode bindings survive save, restore and reload. Confirm a `#showtooltip` macro keeps its dynamic icon after restore.
+7. Change one registered setting in Classmate and Questie. Restore addon data, reload, and check both the UI and persistence across a second reload. Exercise load-on-demand addon coverage. Confirm Auctionator's price database is excluded by default, and check the "After reload" lines in **Last restore report**. Do not claim universal compatibility from these samples.
+8. Test known spell/item/macro slots, saved empty slots, and unavailable spells on a different character. Check cursor preservation and protected-action errors.
+9. Enter combat and verify saves/restores are blocked before mutation. Leave combat and test recovery and restore error reporting.
+10. Check the redesigned window at the user's resolution and UI scale: crest textures, button text, tabs, checkbox labels in Chinese locales, and the addon compartment entry.
+11. Test the full offline backup and restore on a disposable copy of a client directory, not the only copy of real settings.
 
 ## CurseForge publishing
 

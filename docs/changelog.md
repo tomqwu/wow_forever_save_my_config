@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.0
+
+- **Redesigned window.** It uses art from the Forever HUD set: your class crest in the header, each profile's source class crest in the list, a framed crest on the detail card, gold dividers and trim, and flat gold-outlined buttons. **Profiles** and **Snapshots** tabs replace the single recovery button. The window re-fits on every open, so a resolution or UI-scale change never clips it.
+- **Addon caches are excluded by default.** Auctionator's price database, posting history, recent searches and vendor price cache, Baganator's item data, and Syndicator's item data and summaries are listed in the new hand-maintained `Caches.lua`. They are skipped on save, restore, recovery and verification unless **Include addon caches** is ticked. Previously they could push a profile past the 8 MiB limit, failing the whole save or restore, and restoring them replaced newer prices and bag contents.
+- **Five recovery snapshots.** Every restore adds one instead of replacing the last. Restoring a snapshot never deletes it. The existing snapshot migrates automatically.
+- **Full rollback.** If any section fails, every section already changed (not only keybindings) is restored from the snapshot, and post-load validation is skipped with a clear note.
+- **Restore preview.** **Review restore** now lists each binding set, macro, game setting, action slot and addon value that differs, without changing anything.
+- **Keybindings** now include keys bound straight to SPELL, MACRO, ITEM and CLICK actions, and keep gamepad-mode keys in their own binding context. Older profiles restore with their original behavior, so keys they never captured are not cleared.
+- **Dynamic macro icons.** `#showtooltip`/`#show` macros keep their dynamic "?" icon. Updates change only the body, as Blizzard's macro window does, and missing ones are created with the "?" icon.
+- **Addon data after reload.** Restored values are written again as each addon loads after the reload, before that addon reads them. Only addons that load after Save My Config are reached; the report names the rest. Data staged for another character is discarded.
+- **Game settings** now cover the options exposed by Forever's Settings menu (1.60.1.70888), including raid/PvP frames, soft targeting, mouse, accessibility and toasts.
+- **Addon menu and minimap.** The addon is listed in Forever's addon compartment menu. The minimap button can be hidden with a checkbox or `/fconfig minimap`.
+- **Translations.** Every validation, error and report message is now translated to Simplified and Traditional Chinese.
+- **Offline backup tool.** It only refuses to run while WoW is running from that client folder, and it refuses to restore an archive without its `.sha256` file unless `-SkipChecksum` is given.
+- **CI** uses Node 24 actions (`checkout@v7`, `upload-artifact@v7`, `download-artifact@v8`) on pinned `ubuntu-24.04` and `windows-2025` runners.
+- README tool paths now point at the active `_forever_` product folder.
+
 ## 0.7.3
 
 - Re-verified the runtime API against Forever **1.60.1.70888**, Interface **16001**, exported UI source commit `4cd0ab752a77164f654ccbca9d0c1fe8dafceebe`. No addon code changes were required: binding, macro, action-bar, cursor, addon-enumeration, and CVar APIs, `Constants.MacroConsts` (120/30), and the UI templates used are unchanged.

@@ -26,11 +26,25 @@ try {
     try { & (Join-Path $tools 'Backup-WoWConfig.ps1') -ClientPath $client -BackupDirectory $backups -RestoreFrom $archive }
     catch { $rejected = $_.ToString().Contains('checksum mismatch') }
     Assert $rejected 'Damaged backup was not rejected'
+    Remove-Item -LiteralPath ($archive + '.sha256')
+    $rejected = $false
+    try { & (Join-Path $tools 'Backup-WoWConfig.ps1') -ClientPath $client -BackupDirectory $backups -RestoreFrom $archive }
+    catch { $rejected = $_.ToString().Contains('-SkipChecksum') }
+    Assert $rejected 'Unverifiable backup was restored without -SkipChecksum'
+    & (Join-Path $tools 'Backup-WoWConfig.ps1') -ClientPath $client -BackupDirectory $backups -RestoreFrom $archive -SkipChecksum
+    Assert ((Get-Content -LiteralPath $settings -Raw).Trim() -eq 'SYNTHETIC = 1') 'Explicit unverified restore failed'
     function Get-Process { [CmdletBinding()] param() [PSCustomObject]@{ProcessName='WowClassicB'} }
     $rejected = $false
     try { & (Join-Path $tools 'Backup-WoWConfig.ps1') -ClientPath $client -BackupDirectory $backups }
     catch { $rejected = $_.ToString().Contains('Close World of Warcraft') }
     Assert $rejected 'Running-game guard failed'
+    function Get-Process { [CmdletBinding()] param() [PSCustomObject]@{ProcessName='Wow'; Path='Z:\OtherClient\_retail_\Wow.exe'} }
+    & (Join-Path $tools 'Backup-WoWConfig.ps1') -ClientPath $client -BackupDirectory $backups
+    function Get-Process { [CmdletBinding()] param() [PSCustomObject]@{ProcessName='Wow'; Path=(Join-Path $client 'Wow.exe')} }
+    $rejected = $false
+    try { & (Join-Path $tools 'Backup-WoWConfig.ps1') -ClientPath $client -BackupDirectory $backups }
+    catch { $rejected = $_.ToString().Contains('Close World of Warcraft') }
+    Assert $rejected 'Running-game guard ignored this client'
     function Get-Process { [CmdletBinding()] param() }
     $addons = Join-Path $client 'Interface\AddOns'
     New-Item -ItemType Directory -Path (Join-Path $addons 'Example') -Force | Out-Null
@@ -40,7 +54,7 @@ try {
     $registry = Get-Content -LiteralPath (Join-Path $addons 'ForeverSaveMyConfig\Registry.lua') -Raw
     Assert ($registry.Contains('["ExampleDB"] = "account"')) 'Account declaration missing'
     Assert ($registry.Contains('["CharacterDB"] = "character"')) 'Character declaration missing'
-    Write-Host 'PASS PowerShell: backup, restore, retained recovery, checksums, live-game guard, registry scan'
+    Write-Host 'PASS PowerShell: backup, restore, retained recovery, checksums, live-game guard, other-client allowance, unverified-restore opt-in, registry scan'
 } finally {
     if (Test-Path -LiteralPath $fixture) { Remove-Item -LiteralPath $fixture -Recurse -Force }
 }

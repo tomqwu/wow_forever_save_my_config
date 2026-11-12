@@ -10,9 +10,9 @@ permissions:
   contents: read
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y lua5.1
       - run: python3 scripts/check.py
       - run: git diff --check
@@ -22,27 +22,27 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/release_guard.py --repository "$GITHUB_REPOSITORY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ForeverSaveMyConfig
           path: dist/*.zip
   windows-tools:
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Test offline tools with synthetic data
         shell: powershell
         run: ./tests/test_powershell.ps1
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [check, windows-tools]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     outputs:
       tag: ${{ steps.version.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Resolve and validate release version
         id: version
         env:
@@ -51,7 +51,7 @@ jobs:
           tag="$(python3 scripts/release_guard.py --repository "$GITHUB_REPOSITORY")"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           python3 scripts/release_notes.py "$tag" > /tmp/release-notes.md
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ForeverSaveMyConfig
           path: dist

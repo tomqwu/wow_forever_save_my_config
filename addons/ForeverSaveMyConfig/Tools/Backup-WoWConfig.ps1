@@ -5,18 +5,27 @@ Back up the entire WTF directory, or restore an earlier backup while WoW is clos
 .\Backup-WoWConfig.ps1
 .EXAMPLE
 .\Backup-WoWConfig.ps1 -RestoreFrom 'F:\WoWConfigBackups\WTF-20260920-120000.zip'
+.NOTES
+A restore requires the archive's .sha256 file. Pass -SkipChecksum only for an
+archive you trust that was made without one.
 #>
 [CmdletBinding()]
 param(
     [string]$ClientPath = (Join-Path $PSScriptRoot '..\..\..\..'),
     [string]$BackupDirectory = '',
-    [string]$RestoreFrom = ''
+    [string]$RestoreFrom = '',
+    [switch]$SkipChecksum
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $client = (Resolve-Path -LiteralPath $ClientPath).Path
 $wtf = Join-Path $client 'WTF'
-$running = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match '^Wow(Classic)?[A-Za-z]*$' }
+# Block only a game running from this client folder. A process whose path
+# cannot be read is treated as this client, so the check fails safe.
+$running = Get-Process -ErrorAction SilentlyContinue | Where-Object {
+    $_.ProcessName -match '^Wow(Classic)?[A-Za-z]*$' -and
+    (-not $_.Path -or $_.Path.StartsWith($client + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
+}
 if ($running) { throw 'Close World of Warcraft normally first, so all settings are written to disk.' }
 if (-not (Test-Path -LiteralPath $wtf -PathType Container)) { throw "No WTF folder found at $wtf" }
 if (-not $BackupDirectory) { $BackupDirectory = Join-Path (Split-Path $client -Parent) 'WoWConfigBackups' }
@@ -32,6 +41,10 @@ if ($RestoreFrom) {
     if (Test-Path -LiteralPath ($source + '.sha256')) {
         $expected = (Get-Content -LiteralPath ($source + '.sha256') -Raw).Trim()
         if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne $expected) { throw 'Backup checksum mismatch; no settings changed.' }
+    } elseif (-not $SkipChecksum) {
+        throw 'No .sha256 file next to this backup, so it cannot be verified; no settings changed. Pass -SkipChecksum to restore it anyway.'
+    } else {
+        Write-Warning 'Restoring without checksum verification (-SkipChecksum).'
     }
     $zip = [IO.Compression.ZipFile]::OpenRead($source)
     try {

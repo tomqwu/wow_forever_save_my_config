@@ -4,19 +4,19 @@
 
 Forever - Save My Config is a standalone profile manager for **WoW Forever 1.60.1**. Save named profiles of your player settings, export a copy to keep outside the game, and import or restore selected sections through one simple window.
 
-Click the draggable minimap icon or open **`/fconfig`** or **`/fsmc`** to get started. The profile window and import/export dialog are movable and remember their positions. The interface includes English, Simplified Chinese, and Traditional Chinese with English fallback for other client locales.
+Click the draggable minimap icon, pick it from the addon menu, or type **`/fconfig`** or **`/fsmc`** to get started. The window features your class crest and each profile's class crest in the list. It is movable and remembers its position. The interface includes English, Simplified Chinese, and Traditional Chinese with English fallback for other client locales.
 
 ## Your settings, in one place
 
-- **Keybindings:** save both account and current-character binding sets.
+- **Keybindings:** save both account and current-character binding sets, including direct spell/macro bindings and gamepad-mode keys.
 - **Macros:** preserve account and character macros, including their text and icons. Restore merges by name and scope while keeping unrelated macros.
-- **Addon settings:** capture declared saved variables from loaded, registered addons. Coverage and capture notes show what was included or skipped.
-- **Game preferences:** save supported interface, nameplate, camera, auto-loot, chat display, and sound settings.
+- **Addon settings:** capture declared saved variables from loaded, registered addons. Large price, history and bag caches stay out unless you opt in. Coverage and capture notes show what was included or skipped.
+- **Game preferences:** save the options from Forever's Settings menu: interface, nameplates, raid frames, camera, mouse, chat, accessibility, and sound.
 - **Action bars:** save spells, items, macros, and empty slots across 120 standard action slots.
 
 ## Save, share, and restore
 
-Create up to **20 named profiles**, inspect selectable readable details for every saved section, and choose which sections to restore. After login or `/reload`, the newest profile saved by the current character is selected automatically without silently applying it. **Export** produces checksummed text you can keep in a file; **Import** verifies the Adler-32 checksum and adds a profile without applying it. The checksum detects damaged copy/paste text and is not an authenticity signature. A **recovery snapshot** is created before each restore. Pre-load and post-load validation reports unloaded addons, unregistered variables, skipped settings, and live values that did not apply exactly in chat and in **Last restore report**.
+Create up to **20 named profiles**, inspect selectable readable details for every saved section, and choose which sections to restore. After login or `/reload`, the newest profile saved by the current character is selected automatically without silently applying it. **Export** produces checksummed text you can keep in a file; **Import** verifies the Adler-32 checksum and adds a profile without applying it. The checksum detects damaged copy/paste text and is not an authenticity signature. **Review restore** previews exactly what will change. A **recovery snapshot** is created before each restore, the last five are kept, and a failed restore rolls back automatically. Pre-load and post-load validation reports unloaded addons, unregistered variables, skipped settings, and live values that did not apply exactly in chat and in **Last restore report**.
 
 The included addon registry covers **Auctionator, Baganator, Forever Classmate, Leatrix Maps, Leatrix Plus, Questie, SilverDragon, and Syndicator**. A Windows registry scanner lets you add other installed addons' saved-variable declarations. Classmate is not required.
 

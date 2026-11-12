@@ -1,6 +1,6 @@
 local _, NS = ...
 local C, P = NS.Codec, NS.Providers
-NS.Version = '0.7.3'
+NS.Version = '0.8.0'
 NS.Sections = {'bindings', 'macros', 'addons', 'cvars', 'actions'}
 local L,T=NS.L,NS.Text
 NS.Labels = {bindings=L.SECTION_BINDINGS,macros=L.SECTION_MACROS,addons=L.SECTION_ADDONS,
@@ -11,68 +11,87 @@ local function integer(v, low, high) return type(v) == 'number' and v == math.fl
 local function count(t) local n=0; for _ in pairs(t) do n=n+1 end; return n end
 NS.Count = count
 local function macro(m)
-    assert(type(m) == 'table' and str(m.name,64) and #m.name > 0 and str(m.body,1024) and type(m.character) == 'boolean', 'Invalid macro.')
-    assert(str(m.icon,512) or integer(m.icon,1,2147483647), 'Invalid macro icon.')
+    if not (type(m) == 'table' and str(m.name,64) and #m.name > 0 and str(m.body,1024) and type(m.character) == 'boolean') then error(L.V_MACRO, 0) end
+    if not (str(m.icon,512) or integer(m.icon,1,2147483647)) then error(L.V_MACRO_ICON, 0) end
+end
+local function ensure(condition, key) if not condition then error(NS.L[key] or key, 0) end end
+local function bindingMap(map)
+    ensure(type(map) == 'table' and count(map) <= 10000, 'V_BINDING_SET')
+    for key, command in pairs(map) do ensure(str(key,128) and #key > 0 and str(command,512) and #command > 0, 'V_BINDING') end
 end
 function NS.Validate(profile)
-    assert(type(profile) == 'table' and profile.schema == 1, 'Unsupported profile version.')
-    assert(str(profile.name,80) and #profile.name > 0, 'Invalid profile name.')
-    assert(type(profile.source) == 'table' and safeText(profile.source.character,160) and safeText(profile.source.class,32) and safeText(profile.source.build,64), 'Invalid source metadata.')
-    assert(integer(profile.created,0,9999999999), 'Invalid timestamp.')
+    ensure(type(profile) == 'table' and profile.schema == 1, 'V_VERSION')
+    ensure(str(profile.name,80) and #profile.name > 0, 'V_NAME')
+    ensure(type(profile.source) == 'table' and safeText(profile.source.character,160) and safeText(profile.source.class,32) and safeText(profile.source.build,64), 'V_SOURCE')
+    ensure(integer(profile.created,0,9999999999), 'V_TIME')
+    ensure(profile.recovery == nil or type(profile.recovery) == 'boolean', 'V_SOURCE')
     if profile.warnings ~= nil then
-        assert(type(profile.warnings) == 'table' and count(profile.warnings) <= 200, 'Invalid profile notes.')
+        ensure(type(profile.warnings) == 'table' and count(profile.warnings) <= 200, 'V_NOTES')
         for key,warning in pairs(profile.warnings) do
-            assert(integer(key,1,#profile.warnings) and safeText(warning,512), 'Invalid profile note.')
+            ensure(integer(key,1,#profile.warnings) and safeText(warning,512), 'V_NOTE')
         end
     end
     local d = profile.data
-    assert(type(d) == 'table' and count(d) > 0, 'Empty profile.')
-    for key in pairs(d) do assert(P[key], 'Unknown profile section.') end
+    ensure(type(d) == 'table' and count(d) > 0, 'V_EMPTY')
+    for key in pairs(d) do ensure(P[key], 'V_SECTION') end
     if d.bindings then
         local b = d.bindings
-        assert(type(b) == 'table' and (b.active == 1 or b.active == 2) and type(b.sets) == 'table', 'Invalid bindings.')
-        for i=1,2 do
-            assert(type(b.sets[i]) == 'table' and count(b.sets[i]) <= 10000, 'Invalid binding set.')
-            for key, command in pairs(b.sets[i]) do assert(str(key,128) and #key > 0 and str(command,512) and #command > 0, 'Invalid binding.') end
+        ensure(type(b) == 'table' and (b.active == 1 or b.active == 2) and type(b.sets) == 'table', 'V_BINDINGS')
+        ensure(b.direct == nil or b.direct == true, 'V_BINDINGS')
+        for i=1,2 do bindingMap(b.sets[i]) end
+        if b.contexts ~= nil then
+            ensure(type(b.contexts) == 'table', 'V_BINDINGS')
+            for set, contexts in pairs(b.contexts) do
+                ensure((set == 1 or set == 2) and type(contexts) == 'table' and count(contexts) <= 64, 'V_BINDINGS')
+                for ctx, map in pairs(contexts) do ensure(integer(ctx,1,64), 'V_BINDINGS'); bindingMap(map) end
+            end
         end
     end
     if d.macros then
-        assert(type(d.macros) == 'table' and count(d.macros) <= 300, 'Invalid macro list.')
-        for key,m in pairs(d.macros) do assert(integer(key,1,#d.macros), 'Invalid macro index.'); macro(m) end
+        ensure(type(d.macros) == 'table' and count(d.macros) <= 300, 'V_MACRO_LIST')
+        for key,m in pairs(d.macros) do ensure(integer(key,1,#d.macros), 'V_MACRO_INDEX'); macro(m) end
     end
     if d.cvars then
-        assert(type(d.cvars) == 'table', 'Invalid game settings.')
+        ensure(type(d.cvars) == 'table', 'V_CVARS')
         local allow = {}; for _,key in ipairs(NS.CVars) do allow[key] = true end
-        for key,value in pairs(d.cvars) do assert(allow[key] and str(value,256), 'Unrecognized game setting.') end
+        for key,value in pairs(d.cvars) do ensure(allow[key] and str(value,256), 'V_CVAR') end
     end
     if d.actions then
-        assert(type(d.actions) == 'table', 'Invalid action bars.')
+        ensure(type(d.actions) == 'table', 'V_ACTIONS')
         for slot,a in pairs(d.actions) do
-            assert(integer(slot,1,120) and type(a) == 'table', 'Invalid action slot.')
-            assert(a.kind == 'empty' or a.kind == 'spell' or a.kind == 'item' or a.kind == 'macro', 'Unsupported action type.')
+            ensure(integer(slot,1,120) and type(a) == 'table', 'V_ACTION_SLOT')
+            ensure(a.kind == 'empty' or a.kind == 'spell' or a.kind == 'item' or a.kind == 'macro', 'V_ACTION_TYPE')
             if a.kind == 'macro' then macro(a.macro)
-            elseif a.kind ~= 'empty' then assert(integer(a.id,1,2147483647), 'Invalid action ID.') end
+            elseif a.kind ~= 'empty' then ensure(integer(a.id,1,2147483647), 'V_ACTION_ID') end
         end
     end
     if d.addons then
-        assert(type(d.addons) == 'table' and count(d.addons) <= 1000, 'Invalid addon list.')
+        ensure(type(d.addons) == 'table' and count(d.addons) <= 1000, 'V_ADDON_LIST')
         for addon, entry in pairs(d.addons) do
-            assert(str(addon,128) and addon:match('^[%w_%-]+$') and addon ~= 'ForeverSaveMyConfig', 'Invalid addon name.')
-            assert(type(entry) == 'table' and type(entry.variables) == 'table', 'Invalid addon variables.')
+            ensure(str(addon,128) and addon:match('^[%w_%-]+$') and addon ~= 'ForeverSaveMyConfig', 'V_ADDON_NAME')
+            ensure(type(entry) == 'table' and type(entry.variables) == 'table', 'V_ADDON_VARS')
             for name,v in pairs(entry.variables) do
-                assert(str(name,128) and name:match('^[%a_][%w_]*$') and name ~= 'ForeverSaveMyConfigDB', 'Invalid saved variable.')
-                assert(type(v) == 'table' and (v.scope == 'account' or v.scope == 'character') and type(v.present) == 'boolean', 'Invalid saved variable entry.')
-                assert((v.present and v.value ~= nil) or (not v.present and v.value == nil), 'Invalid saved variable value.')
+                ensure(str(name,128) and name:match('^[%a_][%w_]*$') and name ~= 'ForeverSaveMyConfigDB', 'V_VAR_NAME')
+                ensure(type(v) == 'table' and (v.scope == 'account' or v.scope == 'character') and type(v.present) == 'boolean', 'V_VAR_ENTRY')
+                ensure((v.present and v.value ~= nil) or (not v.present and v.value == nil), 'V_VAR_VALUE')
             end
         end
     end
     return profile
 end
+NS.MaxRecoveries = 5
 function NS.Initialize(db)
-    assert(type(db) == 'table', 'Invalid saved database.')
-    assert(not db.schema or db.schema == 1, 'Newer saved database: install a matching addon version.')
-    assert(db.profiles == nil or type(db.profiles) == 'table', 'Invalid saved profiles. Back up the SavedVariables file before repairing it.')
+    ensure(type(db) == 'table', 'ERR_DB_INVALID')
+    ensure(not db.schema or db.schema == 1, 'ERR_DB_NEWER')
+    ensure(db.profiles == nil or type(db.profiles) == 'table', 'ERR_DB_PROFILES')
     db.schema, db.profiles = 1, db.profiles or {}
+    -- 0.8.0 keeps several recovery snapshots instead of one that every restore replaced.
+    if type(db.recoveries) ~= 'table' then db.recoveries = {} end
+    if type(db.recovery) == 'table' then table.insert(db.recoveries, 1, db.recovery) end
+    db.recovery = nil
+    for i = #db.recoveries, 1, -1 do if type(db.recoveries[i]) ~= 'table' then table.remove(db.recoveries, i) end end
+    while #db.recoveries > NS.MaxRecoveries do table.remove(db.recoveries) end
+    if db.staged ~= nil and (type(db.staged) ~= 'table' or type(db.staged.addons) ~= 'table') then db.staged = nil end
     if type(db.ui) ~= 'table' then db.ui = {} end
     if type(db.ui.positions) ~= 'table' then db.ui.positions = {} end
     if type(db.ui.sections) ~= 'table' then db.ui.sections = {} end
@@ -85,44 +104,50 @@ function NS.Initialize(db)
     for _,key in ipairs(NS.Sections) do
         if type(db.ui.sections[key]) ~= 'boolean' then db.ui.sections[key] = true end
     end
+    if type(db.ui.addonCaches) ~= 'boolean' then db.ui.addonCaches = false end
+    if type(db.ui.minimapHidden) ~= 'boolean' then db.ui.minimapHidden = false end
     NS.db = db
 end
 local function cleanCaptureError(value)
     value = tostring(value):gsub('[%c|]', ' ')
     return value:sub(1, 380)
 end
+local function shortName(name)
+    if #name <= 80 then return name end
+    -- Cut on a UTF-8 boundary so the stored name stays readable.
+    return (name:sub(1, 80):gsub('[\192-\255][\128-\191]*$', ''))
+end
 function NS.Capture(name, sections, requireAll)
     NS.OutOfCombat()
     local _, class = UnitClass('player')
     local version, build = GetBuildInfo()
     local profile = {schema = 1, name = name, created = time(), source = {
-        character = (UnitName('player') or '?')..' - '..(GetRealmName() or '?'),
+        character = NS.CurrentCharacter(),
         class = class or '?', build = tostring(version)..' / '..tostring(build),
     }, data = {}, warnings = {}}
     for _,key in ipairs(NS.Sections) do
         if sections[key] then
             local ok, result = pcall(P[key].capture, sections, profile.warnings)
             if ok then profile.data[key] = result
-            elseif requireAll then error('Cannot capture '..key..': '..tostring(result), 0)
-            else profile.warnings[#profile.warnings+1] =
-                'Skipped '..NS.Labels[key]..': '..cleanCaptureError(result) end
+            elseif requireAll then error(T('ERR_CAPTURE',NS.Labels[key],tostring(result)), 0)
+            else profile.warnings[#profile.warnings+1] = T('CAPTURE_SKIPPED',NS.Labels[key],cleanCaptureError(result)) end
         end
     end
-    assert(next(profile.data), 'None of the selected sections could be captured. Read the error shown in chat.')
+    ensure(next(profile.data), 'ERR_NOTHING_CAPTURED')
     NS.Validate(profile)
     C.Pack(profile) -- Fail before changing the saved database if aggregate data exceeds limits.
     return profile
 end
 function NS.CleanName(name)
-    assert(type(name) == 'string', 'Enter a profile name.')
+    ensure(type(name) == 'string', 'ERR_NAME_TYPE')
     name = name:match('^%s*(.-)%s*$')
-    assert(#name > 0 and #name <= 80 and not name:find('[%c|]'), 'Use a name of 1-80 bytes without control characters or |.')
+    ensure(#name > 0 and #name <= 80 and not name:find('[%c|]'), 'ERR_NAME_RULES')
     return name
 end
 function NS.Save(name, sections)
     name = NS.CleanName(name)
-    assert(not NS.db.profiles[name], 'That name already exists. Choose a new name or delete the old profile.')
-    assert(count(NS.db.profiles) < 20, '20-profile limit reached. Export/delete a profile first.')
+    ensure(not NS.db.profiles[name], 'ERR_NAME_EXISTS')
+    ensure(count(NS.db.profiles) < 20, 'ERR_PROFILE_LIMIT')
     local profile = NS.Capture(name, sections)
     NS.db.profiles[name] = profile
     return profile
@@ -133,17 +158,17 @@ function NS.Import(text, name)
     name = NS.CleanName(name and name:match('%S') and name or p.name)
     local base, suffix = name, 2
     while NS.db.profiles[name] do name = base:sub(1,70)..' ('..suffix..')'; suffix = suffix+1 end
-    assert(count(NS.db.profiles) < 20, '20-profile limit reached.')
+    ensure(count(NS.db.profiles) < 20, 'ERR_PROFILE_LIMIT')
     p.name = name
+    p.recovery = nil
     if type(p.warnings) ~= 'table' then p.warnings = {} end
-    local importNote='Imported profile. Review source and selected sections before restoring.'
-    if p.warnings[1]~=importNote then table.insert(p.warnings,1,importNote) end
+    if p.warnings[1]~=L.IMPORT_NOTE then table.insert(p.warnings,1,L.IMPORT_NOTE) end
     NS.db.profiles[name] = p
     return p,checksum
 end
 function NS.Export(profile) NS.Validate(profile); return C.Export(profile) end
 function NS.CurrentCharacter()
-    return (UnitName('player') or '?')..' - '..(GetRealmName() or '?')
+    return (UnitName and UnitName('player') or '?')..' - '..(GetRealmName and GetRealmName() or '?')
 end
 function NS.DefaultProfileName()
     if not NS.db or type(NS.db.profiles)~='table' then return nil end
@@ -263,84 +288,123 @@ function NS.Inspect(profile)
     if truncated then rows[#rows+1]='\n'..L.INSPECT_TRUNCATED end
     return table.concat(rows,'\n')
 end
+local ORDER = {'macros','bindings','cvars','actions','addons'}
+-- Dry run: the same comparisons used after a restore, against the live game.
+function NS.Preview(profile, sections)
+    NS.OutOfCombat(); NS.Validate(profile)
+    local audit = {count=0,lines={}}
+    for _,key in ipairs(ORDER) do
+        if sections[key] and profile.data[key] and P[key].verify then
+            local ok,err = pcall(P[key].verify,profile.data[key],audit)
+            if not ok then NS.AuditIssue(audit,T('VERIFY_ERROR',NS.Labels[key],tostring(err))) end
+        end
+    end
+    return audit
+end
+function NS.PreviewText(profile, sections)
+    local ok, audit = pcall(NS.Preview, profile, sections)
+    if not ok then return T('PREVIEW_UNAVAILABLE',tostring(audit)) end
+    if audit.count == 0 then return L.PREVIEW_SAME end
+    local rows = {T('PREVIEW_CHANGES',audit.count)}
+    for _,line in ipairs(audit.lines) do rows[#rows+1] = line end
+    if audit.count > #audit.lines then rows[#rows+1] = T('POSTCHECK_MORE',audit.count-#audit.lines) end
+    return table.concat(rows,'\n')
+end
+local function pushRecovery(snapshot, keep)
+    local list = NS.db.recoveries
+    table.insert(list, 1, snapshot)
+    -- Never evict the snapshot that is being restored.
+    while #list > NS.MaxRecoveries do
+        local victim = #list
+        if list[victim] == keep then victim = victim-1 end
+        table.remove(list, victim)
+    end
+end
+function NS.LatestRecovery() return NS.db and NS.db.recoveries[1] end
 function NS.Restore(profile, sections)
     NS.OutOfCombat(); NS.Validate(profile)
     local selected = {}
     for _,key in ipairs(NS.Sections) do if sections[key] and profile.data[key] then selected[key] = true end end
-    assert(next(selected), 'Select at least one section present in this profile.')
-    if selected.actions then assert(GetCursorInfo and not GetCursorInfo(), 'Clear your cursor first.') end
-    assert(not NS.pendingAddons, 'Reload to finish the previous addon restore before restoring again.')
+    ensure(next(selected), 'ERR_SELECT_SECTION')
+    if selected.actions then ensure(GetCursorInfo and not GetCursorInfo(), 'ERR_CURSOR') end
+    ensure(not NS.pendingAddons, 'ERR_RELOAD_PENDING')
     local report,preCount,preLines={},0,0
+    local function pre(line) preCount=preCount+1; if preLines<50 then report[#report+1]=line;preLines=preLines+1 end end
     if selected.addons then
         for _,addon in ipairs(inspectKeys(profile.data.addons)) do
             local entry=profile.data.addons[addon]
-            if not NS.Loaded(addon) then
-                preCount=preCount+1
-                if preLines<50 then report[#report+1]=T('PRECHECK_ADDON',addon,count(entry.variables));preLines=preLines+1 end
+            if not NS.Loaded(addon) then pre(T('PRECHECK_ADDON',addon,count(entry.variables)))
             else
                 for _,name in ipairs(inspectKeys(entry.variables)) do
                     local saved=entry.variables[name]
-                    if not NS.Registry[addon] or NS.Registry[addon][name]~=saved.scope then
-                        preCount=preCount+1
-                        if preLines<50 then report[#report+1]=T('PRECHECK_VARIABLE',addon,name);preLines=preLines+1 end
-                    end
+                    if NS.SkipCache(addon,name) then pre(T('PRECHECK_CACHE',addon,name))
+                    elseif not NS.Registry[addon] or NS.Registry[addon][name]~=saved.scope then pre(T('PRECHECK_VARIABLE',addon,name)) end
                 end
             end
         end
     end
     if preCount==0 then report[#report+1]=L.PRECHECK_OK
     elseif preCount>preLines then report[#report+1]=T('PRECHECK_MORE',preCount-preLines) end
-    local backup = NS.Capture('Before restore', selected, true)
+    local backup = NS.Capture(shortName(T('RECOVERY_NAME',profile.name)), selected, true)
+    backup.recovery = true
     -- Never overwrite addon data unless its current value was safely captured.
     if selected.addons then
         for addon,entry in pairs(profile.data.addons) do
             if NS.Loaded(addon) and NS.Registry[addon] then
                 for name in pairs(entry.variables) do
-                    if NS.Registry[addon][name] then
-                        assert(backup.data.addons[addon] and backup.data.addons[addon].variables[name], 'Cannot back up '..name..'; restore cancelled.')
+                    if NS.Registry[addon][name] and not NS.SkipCache(addon,name) then
+                        ensure(backup.data.addons[addon] and backup.data.addons[addon].variables[name], T('ERR_BACKUP',name))
                     end
                 end
             end
         end
     end
-    NS.db.recovery = backup
-    report[#report+1]='Recovery snapshot saved. Macros merge; new macros are not removed by recovery.'
+    pushRecovery(backup, profile)
+    report[#report+1]=L.RECOVERY_SAVED
     -- Macro IDs may reorder after edits: restore bars after macros, resolve by identity.
-    local order = {'macros','bindings','cvars','actions','addons'}
-    local processed={}
-    for _,key in ipairs(order) do
+    local processed,attempted,failed={},{},false
+    for _,key in ipairs(ORDER) do
         if selected[key] then
+            attempted[#attempted+1]=key
             local ok, result = pcall(P[key].restore, profile.data[key], report)
             if ok then
                 processed[key]=true
-                if key == 'addons' then NS.pendingAddons = result; report[#report+1] = 'Addon data applied. Reload now to let addons initialize from it.' end
-                report[#report+1] = 'Processed '..NS.Labels[key]
-            else
-                report[#report+1] = 'FAILED '..key..': '..tostring(result)
-                if key == 'bindings' then
-                    local rollback, err = pcall(P.bindings.restore, backup.data.bindings)
-                    report[#report+1] = rollback and 'Original bindings recovered.' or ('Binding recovery failed: '..tostring(err))
+                if key == 'addons' then
+                    NS.pendingAddons = result
+                    NS.db.staged = {character = NS.CurrentCharacter(), created = time(), addons = result}
+                    report[#report+1] = L.ADDONS_APPLIED
                 end
-                report[#report+1] = 'Stopped here. Earlier sections may have changed; recovery snapshot is available.'
+                report[#report+1] = T('PROCESSED',NS.Labels[key])
+            else
+                failed=true
+                report[#report+1] = T('FAILED',NS.Labels[key],tostring(result))
+                -- Undo every section already touched, newest first, from the recovery snapshot.
+                for i=#attempted,1,-1 do
+                    local undo=attempted[i]
+                    local rolled,err=pcall(P[undo].restore,backup.data[undo],{})
+                    report[#report+1]=rolled and T('ROLLBACK_OK',NS.Labels[undo]) or T('ROLLBACK_FAILED',NS.Labels[undo],tostring(err))
+                    processed[undo]=nil
+                end
+                report[#report+1] = L.STOPPED
                 break
             end
         end
     end
-    local audit={count=0,lines={}}
-    for _,key in ipairs(order) do
-        if processed[key] and P[key].verify then
-            local ok,err=pcall(P[key].verify,profile.data[key],audit)
-            if not ok then
-                audit.count=audit.count+1
-                if #audit.lines<50 then audit.lines[#audit.lines+1]=T('VERIFY_ERROR',NS.Labels[key],tostring(err)) end
+    if failed then report[#report+1]=L.POSTCHECK_SKIPPED
+    else
+        local audit={count=0,lines={}}
+        for _,key in ipairs(ORDER) do
+            if processed[key] and P[key].verify then
+                local ok,err=pcall(P[key].verify,profile.data[key],audit)
+                if not ok then NS.AuditIssue(audit,T('VERIFY_ERROR',NS.Labels[key],tostring(err))) end
             end
         end
-    end
-    if audit.count==0 then report[#report+1]=L.POSTCHECK_OK
-    else
-        report[#report+1]=T('POSTCHECK_FAILED',audit.count)
-        for _,line in ipairs(audit.lines) do report[#report+1]=line end
-        if audit.count>#audit.lines then report[#report+1]=T('POSTCHECK_MORE',audit.count-#audit.lines) end
+        if audit.count==0 then report[#report+1]=L.POSTCHECK_OK
+        else
+            report[#report+1]=T('POSTCHECK_FAILED',audit.count)
+            for _,line in ipairs(audit.lines) do report[#report+1]=line end
+            if audit.count>#audit.lines then report[#report+1]=T('POSTCHECK_MORE',audit.count-#audit.lines) end
+        end
     end
     NS.db.lastReport = table.concat(report,'\n')
     if NS.ChatRestoreReport then NS.ChatRestoreReport(NS.db.lastReport) end
