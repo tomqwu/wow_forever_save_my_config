@@ -1,6 +1,6 @@
 local _, NS = ...
 local C, P = NS.Codec, NS.Providers
-NS.Version = '0.8.0'
+NS.Version = '0.8.1'
 NS.Sections = {'bindings', 'macros', 'addons', 'cvars', 'actions'}
 local L,T=NS.L,NS.Text
 NS.Labels = {bindings=L.SECTION_BINDINGS,macros=L.SECTION_MACROS,addons=L.SECTION_ADDONS,
@@ -68,7 +68,7 @@ function NS.Validate(profile)
     if d.addons then
         ensure(type(d.addons) == 'table' and count(d.addons) <= 1000, 'V_ADDON_LIST')
         for addon, entry in pairs(d.addons) do
-            ensure(str(addon,128) and addon:match('^[%w_%-]+$') and addon ~= 'ForeverSaveMyConfig', 'V_ADDON_NAME')
+            ensure(str(addon,128) and addon:match('^[%w_%.!%+%-]+$') and addon ~= 'ForeverSaveMyConfig', 'V_ADDON_NAME')
             ensure(type(entry) == 'table' and type(entry.variables) == 'table', 'V_ADDON_VARS')
             for name,v in pairs(entry.variables) do
                 ensure(str(name,128) and name:match('^[%a_][%w_]*$') and name ~= 'ForeverSaveMyConfigDB', 'V_VAR_NAME')

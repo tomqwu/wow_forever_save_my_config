@@ -8,14 +8,34 @@ $lines.Add('-- Generated from Interface 16001 TOC declarations, not player setti
 $lines.Add('local _, NS = ...')
 $lines.Add('NS.Registry = {')
 $count = 0
+# WoW Forever's game type. Directive lines may end in load conditions such as
+# [AllowLoadGameType camelot][ExcludeLoadGameType classic]; keep only the
+# lines that apply here and merge repeated SavedVariables lines.
+$gameType = 'camelot'
+function Split-Directive([string]$value) {
+    $active = $true
+    while ($value -match '^(.*?)\s*\[([A-Za-z]+)\s*([^\]]*)\]\s*$') {
+        $value = $Matches[1]
+        $kind = $Matches[2].ToLowerInvariant()
+        $types = @($Matches[3].ToLowerInvariant() -split '[,\s]+' | Where-Object { $_ })
+        if ($kind -eq 'allowloadgametype' -and $types -notcontains $gameType) { $active = $false }
+        if ($kind -eq 'excludeloadgametype' -and $types -contains $gameType) { $active = $false }
+    }
+    return @($value.Trim(), $active)
+}
 foreach ($folder in (Get-ChildItem -LiteralPath $root -Directory | Sort-Object Name)) {
     if ($folder.Name -eq 'ForeverSaveMyConfig' -or $folder.Name.StartsWith('Blizzard_')) { continue }
-    if ($folder.Name -notmatch '^[A-Za-z0-9_-]+$') { throw "Unsupported addon folder: $($folder.Name)" }
+    if ($folder.Name -cnotmatch '^[A-Za-z0-9_.!+-]+$') { throw "Unsupported addon folder: $($folder.Name)" }
     $candidates = [Collections.Generic.List[string]]::new()
     foreach ($toc in (Get-ChildItem -LiteralPath $folder.FullName -Filter '*.toc' | Sort-Object Name)) {
         $meta = @{}
         foreach ($line in (Get-Content -LiteralPath $toc.FullName -Encoding UTF8)) {
-            if ($line -match '^##\s*([^:]+):\s*(.*)') { $meta[$Matches[1].Trim()] = $Matches[2].Trim() }
+            if ($line -notmatch '^##\s*([^:]+):\s*(.*)') { continue }
+            $key = $Matches[1].Trim()
+            $value, $active = Split-Directive $Matches[2]
+            if (-not $active) { continue }
+            if ($key -in @('SavedVariables', 'SavedVariablesPerCharacter') -and $meta[$key]) { $meta[$key] += ', ' + $value }
+            else { $meta[$key] = $value }
         }
         if ($meta['Interface'] -notmatch '\b16001\b') { continue }
         $variables = @{}

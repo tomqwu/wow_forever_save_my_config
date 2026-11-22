@@ -189,6 +189,12 @@ test('schema refuses malformed actions, unknown CVars and self-targeting globals
     throws(function() NS.Validate(p) end)
     p.data.addons.Example.variables.ForeverSaveMyConfigDB=nil;p.source.character='|Tbad'
     throws(function() NS.Validate(p) end)
+    p.source.character='Test-Realm'
+    -- Client folder names such as !BugGrabber are valid; quotes are not.
+    p.data.addons['!BugGrabber']={variables={BugGrabberDB={scope='account',present=false}}}
+    NS.Validate(p)
+    p.data.addons['Bad"Name']={variables={}}; throws(function() NS.Validate(p) end); p.data.addons['Bad"Name']=nil
+    p.data.addons['!BugGrabber']=nil
     p.schema=2; throws(function() NS.Validate(p) end)
 end)
 test('restore creates independent recovery, replaces bindings, keeps active set',function()

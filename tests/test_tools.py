@@ -25,6 +25,32 @@ class ToolsTests(unittest.TestCase):
             self.assertEqual(data, {'Example': {'ExampleDB': 'account', 'Other': 'account', 'CharDB': 'character'}})
             self.assertNotIn('private', registry.render(data))
 
+    def test_registry_follows_forever_load_conditions_and_symbol_folders(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            grabber = root / '!BugGrabber'
+            grabber.mkdir()
+            (grabber / '!BugGrabber.toc').write_text('## Interface: 16001\n## SavedVariables: BugGrabberDB\n')
+            training = root / 'WhatsTraining'
+            training.mkdir()
+            # Shape of WhatsTraining's real TOC: one line per game type.
+            (training / 'WhatsTraining.toc').write_text(
+                '## Interface: 20506, 16001, 11509\n'
+                '## SavedVariables: WT_Minimap, WT_EnableProfessions [AllowLoadGameType classic][ExcludeLoadGameType camelot]\n'
+                '## SavedVariables: WT_Minimap, WT_TrainAll [AllowLoadGameType camelot][ExcludeLoadGameType classic]\n'
+                '## SavedVariables: WT_Shared\n'
+                '## SavedVariablesPerCharacter: WT_IgnoredSpells [AllowLoadGameType vanilla, camelot]\n'
+                '## SavedVariablesPerCharacter: WT_Mainline [AllowLoadGameType mainline]\n'
+                '## OptionalDeps: TomTom [AllowLoadGameType classic][ExcludeLoadGameType camelot]\n')
+            data = registry.scan(root)
+            self.assertEqual(data['!BugGrabber'], {'BugGrabberDB': 'account'})
+            self.assertEqual(data['WhatsTraining'], {'WT_Minimap': 'account', 'WT_TrainAll': 'account',
+                                                     'WT_Shared': 'account', 'WT_IgnoredSpells': 'character'})
+            self.assertIn('["!BugGrabber"] = {', registry.render(data))
+            (root / 'Bad"Name').mkdir()
+            with self.assertRaises(ValueError):
+                registry.scan(root)
+
     def test_ambiguous_tocs_and_unsafe_declarations_refused(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

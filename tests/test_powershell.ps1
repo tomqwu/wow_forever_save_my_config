@@ -50,11 +50,22 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $addons 'Example') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $addons 'ForeverSaveMyConfig') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $addons 'Example\Example.toc') -Value "## Interface: 16001`n## SavedVariables: ExampleDB`n## SavedVariablesPerCharacter: CharacterDB"
+    New-Item -ItemType Directory -Path (Join-Path $addons '!BugGrabber') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $addons '!BugGrabber\!BugGrabber.toc') -Value "## Interface: 16001`n## SavedVariables: BugGrabberDB"
+    New-Item -ItemType Directory -Path (Join-Path $addons 'WhatsTraining') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $addons 'WhatsTraining\WhatsTraining.toc') -Value ("## Interface: 20506, 16001, 11509`n" +
+        "## SavedVariables: WT_Minimap, WT_EnableProfessions [AllowLoadGameType classic][ExcludeLoadGameType camelot]`n" +
+        "## SavedVariables: WT_Minimap, WT_TrainAll [AllowLoadGameType camelot][ExcludeLoadGameType classic]`n" +
+        "## SavedVariablesPerCharacter: WT_IgnoredSpells")
     & (Join-Path $tools 'Update-AddonRegistry.ps1') -AddOnsPath $addons
     $registry = Get-Content -LiteralPath (Join-Path $addons 'ForeverSaveMyConfig\Registry.lua') -Raw
     Assert ($registry.Contains('["ExampleDB"] = "account"')) 'Account declaration missing'
     Assert ($registry.Contains('["CharacterDB"] = "character"')) 'Character declaration missing'
-    Write-Host 'PASS PowerShell: backup, restore, retained recovery, checksums, live-game guard, other-client allowance, unverified-restore opt-in, registry scan'
+    Assert ($registry.Contains('["!BugGrabber"] = {')) 'Symbol folder name missing'
+    Assert ($registry.Contains('["WT_TrainAll"] = "account"')) 'Forever-only declaration missing'
+    Assert (-not $registry.Contains('WT_EnableProfessions')) 'Classic-only declaration included'
+    Assert ($registry.Contains('["WT_IgnoredSpells"] = "character"')) 'Unconditional declaration missing'
+    Write-Host 'PASS PowerShell: backup, restore, retained recovery, checksums, live-game guard, other-client allowance, unverified-restore opt-in, registry scan with load conditions and symbol folder names'
 } finally {
     if (Test-Path -LiteralPath $fixture) { Remove-Item -LiteralPath $fixture -Recurse -Force }
 }

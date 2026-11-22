@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1
+
+- **Addon registry scanner** (`Update-AddonRegistry.ps1` and `scripts/registry.py`) no longer stops on addon folders whose names start with a symbol, such as `!BugGrabber`. Folder names may use letters, digits and `_ - . ! +`; profiles that contain these addons now pass validation too.
+- **TOC load conditions.** Lines ending in `[AllowLoadGameType …]` or `[ExcludeLoadGameType …]`, as in WhatsTraining's TOC, are no longer read as variable names. A line counts only when it applies to Forever's `camelot` game type, and repeated `SavedVariables` lines are combined, so WhatsTraining's Forever settings (for example `WT_TrainAll`) are registered and its Classic-only ones are not.
+- Reported by kruderf on CurseForge.
+
 ## 0.8.0
 
 - **Redesigned window.** It uses art from the Forever HUD set: your class crest in the header, each profile's source class crest in the list, a framed crest on the detail card, gold dividers and trim, and flat gold-outlined buttons. **Profiles** and **Snapshots** tabs replace the single recovery button. The window re-fits on every open, so a resolution or UI-scale change never clips it.
